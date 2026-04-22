@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import api from '../services/api'
 
 type MatchState = {
@@ -26,6 +26,7 @@ type MatchState = {
 
 const route = useRoute()
 const screenId = computed(() => Number(route.params.id))
+const tvBaseUrl = import.meta.env.VITE_TV_URL
 
 const loading = ref(true)
 const error = ref('')
@@ -84,7 +85,8 @@ async function loadCurrentMatch() {
     noMatch.value = false
 
     const { data } = await api.get(`/screens/${screenId.value}/current`)
-    applyMatch(data)
+    const payload = data?.data ?? data
+    applyMatch(payload)
   } catch (err: any) {
     if (err.response?.status === 404) {
       noMatch.value = true
@@ -104,7 +106,7 @@ async function createMatch() {
   try {
     saving.value = true
 
-    const { data } = await api.post('/matches', {
+    const response = await api.post('/matches', {
       screenId: screenId.value,
       sportType: 'volleyball',
       team1Name: team1Name.value.trim(),
@@ -113,7 +115,8 @@ async function createMatch() {
       periodTime: periodTime.value,
     })
 
-    applyMatch(data)
+    const payload = response.data?.data ?? response.data
+    applyMatch(payload)
   } catch (err) {
     console.error(err)
     formError.value = 'Не вдалося створити матч'
@@ -126,8 +129,9 @@ async function changeScore(team: 1 | 2, delta: number) {
   if (!match.value?.id) return
 
   try {
-    const { data } = await api.patch(`/matches/${match.value.id}/score`, { team, delta })
-    applyMatch(data)
+    const response = await api.patch(`/matches/${match.value.id}/score`, { team, delta })
+    const payload = response.data?.data ?? response.data
+    applyMatch(payload)
   } catch (err) {
     console.error(err)
     formError.value = 'Не вдалося змінити рахунок'
@@ -141,7 +145,7 @@ async function saveSettings() {
   try {
     saving.value = true
 
-    const { data } = await api.patch(`/matches/${match.value.id}/settings`, {
+    const response = await api.patch(`/matches/${match.value.id}/settings`, {
       team1Name: team1Name.value.trim(),
       team2Name: team2Name.value.trim(),
       currentSet: currentSet.value,
@@ -149,7 +153,8 @@ async function saveSettings() {
       status: status.value,
     })
 
-    applyMatch(data)
+    const payload = response.data?.data ?? response.data
+    applyMatch(payload)
   } catch (err) {
     console.error(err)
     formError.value = 'Не вдалося зберегти налаштування'
@@ -162,8 +167,9 @@ async function takeTimeout(team: 1 | 2) {
   if (!match.value?.id) return
 
   try {
-    const { data } = await api.patch(`/matches/${match.value.id}/timeout`, { team })
-    applyMatch(data)
+    const response = await api.patch(`/matches/${match.value.id}/timeout`, { team })
+    const payload = response.data?.data ?? response.data
+    applyMatch(payload)
   } catch (err) {
     console.error(err)
     formError.value = 'Не вдалося зарахувати таймаут'
@@ -174,8 +180,9 @@ async function startPeriod() {
   if (!match.value?.id) return
 
   try {
-    const { data } = await api.post(`/matches/${match.value.id}/start-period`)
-    applyMatch(data)
+    const response = await api.post(`/matches/${match.value.id}/start-period`)
+    const payload = response.data?.data ?? response.data
+    applyMatch(payload)
   } catch (err) {
     console.error(err)
     formError.value = 'Не вдалося почати період'
@@ -186,8 +193,9 @@ async function endPeriod() {
   if (!match.value?.id) return
 
   try {
-    const { data } = await api.post(`/matches/${match.value.id}/end-period`)
-    applyMatch(data)
+    const response = await api.post(`/matches/${match.value.id}/end-period`)
+    const payload = response.data?.data ?? response.data
+    applyMatch(payload)
   } catch (err) {
     console.error(err)
     formError.value = 'Не вдалося завершити період'
@@ -199,8 +207,9 @@ async function resetMatch() {
   if (!window.confirm('Справді скинути матч?')) return
 
   try {
-    const { data } = await api.post(`/matches/${match.value.id}/reset`)
-    applyMatch(data)
+    const response = await api.post(`/matches/${match.value.id}/reset`)
+    const payload = response.data?.data ?? response.data
+    applyMatch(payload)
   } catch (err) {
     console.error(err)
     formError.value = 'Не вдалося скинути матч'
@@ -212,7 +221,19 @@ onMounted(loadCurrentMatch)
 
 <template>
   <div class="page">
-    <h1>Control Panel — Screen {{ screenId }}</h1>
+    <div class="header">
+      <div>
+        <h1>Control Panel — Screen {{ screenId }}</h1>
+        <p class="subtitle">Керування матчем та live preview</p>
+      </div>
+
+      <div class="header-actions">
+        <RouterLink to="/screens">← Screens</RouterLink>
+        <a :href="`${tvBaseUrl}/screens/${screenId}`" target="_blank" rel="noopener">
+          Open TV
+        </a>
+      </div>
+    </div>
 
     <p v-if="loading">Завантаження...</p>
     <p v-else-if="error" class="error-text">{{ error }}</p>
@@ -326,6 +347,21 @@ onMounted(loadCurrentMatch)
 .page {
   padding: 24px;
 }
+.header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.subtitle {
+  opacity: 0.75;
+  margin-top: 4px;
+}
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
 .control-layout {
   display: grid;
   grid-template-columns: 320px 1fr 1fr;
@@ -341,7 +377,6 @@ onMounted(loadCurrentMatch)
 label {
   display: block;
   margin-bottom: 14px;
-  font-size: 14px;
 }
 input,
 select {
