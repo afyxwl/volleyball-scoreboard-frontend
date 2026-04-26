@@ -121,7 +121,10 @@ async function pausePeriod() {
   if (!match.value?.id) return
 
   try {
-    const response = await api.post(`/matches/${match.value.id}/pause-period`)
+    const response = await api.post(`/matches/${match.value.id}/pause-period`, {
+      periodTime: match.value.clock?.time ?? form.periodTime,
+    })
+
     const payload = response.data?.data ?? response.data
     applyMatch(payload)
   } catch (err) {
@@ -344,12 +347,14 @@ onMounted(loadCurrentMatch)
             <button @click="takeTimeout(1)">Таймаут команді 1</button>
 
             <div class="foul-box">
-              <strong>Фоли</strong>
+              <strong>Фоли: {{ match.team1.fouls ?? 0 }}</strong>
               <div class="row">
                 <button @click="changeFouls(1, 1)">+1 фол</button>
                 <button @click="changeFouls(1, -1)">-1 фол</button>
               </div>
             </div>
+          </div>
+
           <div class="team-box">
             <h3>{{ match.team2.name }}</h3>
             <p class="score">{{ match.team2.score }}</p>
@@ -361,11 +366,12 @@ onMounted(loadCurrentMatch)
 
             <button @click="takeTimeout(2)">Таймаут команді 2</button>
 
-          <div class="foul-box">
-            <strong>Фоли</strong>
-            <div class="row">
-              <button @click="changeFouls(2, 1)">+1 фол</button>
-              <button @click="changeFouls(2, -1)">-1 фол</button>
+            <div class="foul-box">
+              <strong>Фоли: {{ match.team2.fouls ?? 0 }}</strong>
+              <div class="row">
+                <button @click="changeFouls(2, 1)">+1 фол</button>
+                <button @click="changeFouls(2, -1)">-1 фол</button>
+              </div>
             </div>
           </div>
         </div>

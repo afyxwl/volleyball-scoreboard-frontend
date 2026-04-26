@@ -65,10 +65,8 @@ function startTicker() {
   if (scoreboard.value.status !== 'live') return
 
   timerId = window.setInterval(() => {
-    if (seconds > 0) {
-      seconds -= 1
-      displayedClock.value = formatClock(seconds)
-    }
+    seconds += 1
+    displayedClock.value = formatClock(seconds)
   }, 1000)
 }
 
