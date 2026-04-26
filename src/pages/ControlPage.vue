@@ -43,9 +43,10 @@ const currentSet = ref(1)
 const periodTime = ref('00:00')
 const status = ref<'draft' | 'live' | 'paused'>('draft')
 
-// UI only, поки без backend підтримки
+
 const fouls1 = ref(0)
 const fouls2 = ref(0)
+const finishComment = ref('')
 
 function syncFormFromMatch(data: MatchState) {
   team1Name.value = data.team1.name
@@ -122,7 +123,7 @@ async function pausePeriod() {
 
   try {
     const response = await api.post(`/matches/${match.value.id}/pause-period`, {
-      periodTime: match.value.clock?.time ?? form.periodTime,
+      periodTime: displayedClock.value ?? form.periodTime,
     })
 
     const payload = response.data?.data ?? response.data
@@ -230,9 +231,16 @@ async function endPeriod() {
   if (!match.value?.id) return
 
   try {
-    const response = await api.post(`/matches/${match.value.id}/end-period`)
+    const response = await api.post(`/matches/${match.value.id}/end-period`, {
+      periodTime: periodTime.value, // або displayedClock якщо вже додала
+      comment: finishComment.value,
+    })
+
     const payload = response.data?.data ?? response.data
     applyMatch(payload)
+
+    // очищаємо поле після завершення
+    finishComment.value = ''
   } catch (err) {
     console.error(err)
     formError.value = 'Не вдалося завершити період'
@@ -267,6 +275,9 @@ onMounted(loadCurrentMatch)
         <RouterLink to="/screens">← Екрани</RouterLink>
         <RouterLink :to="`/screens/${screenId}/preview`">
           Попередній перегляд
+        </RouterLink>
+        <RouterLink v-if="match?.id" :to="`/matches/${match.id}/history`">
+          Історія матчу
         </RouterLink>
         <a :href="`${tvBaseUrl}/screens/${screenId}`" target="_blank" rel="noopener">
           Відкрити TV
@@ -308,6 +319,10 @@ onMounted(loadCurrentMatch)
             <option value="live">Триває</option>
             <option value="paused">Пауза</option>
           </select>
+        </label>
+        <label>
+          Коментар до завершення матчу
+          <textarea v-model="finishComment" placeholder="Наприклад: перемога команди Boot, технічна перерва..." />
         </label>
 
         <div class="row">

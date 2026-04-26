@@ -7,6 +7,7 @@ import UsersPage from '../pages/UsersPage.vue'
 import ScreensPage from '../pages/ScreensPage.vue'
 import ControlPage from '../pages/ControlPage.vue'
 import PreviewPage from '../pages/PreviewPage.vue'
+import MatchHistoryPage from '../pages/MatchHistoryPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -38,6 +39,12 @@ const router = createRouter({
       name: 'screens',
       component: ScreensPage,
       meta: { requiresAuth: true },
+    },
+    {
+    path: '/matches/:id/history',
+    name: 'match-history',
+    component: MatchHistoryPage,
+    meta: { requiresAuth: true },
     },
     {
       path: '/screens/:id/control',
