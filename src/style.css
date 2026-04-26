@@ -294,3 +294,152 @@ code {
     border-right-color: var(--border);
   }
 }
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: #f5f5f5;
+}
+
+a {
+  color: #4ea1ff;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+}
+
+input,
+select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background: #1a1a1a;
+  color: #fff;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.page {
+  padding: 24px;
+}
+
+.card {
+  background: #1b1b1b;
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.screens-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.control-layout {
+  display: grid;
+  gap: 20px;
+}
+
+.teams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.team-box {
+  padding: 16px;
+  border: 1px solid #333;
+  border-radius: 12px;
+}
+
+.score {
+  font-size: 48px;
+  font-weight: bold;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.preview {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+  align-items: center;
+  text-align: center;
+}
+
+.preview-team,
+.preview-center {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tv-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 40px;
+  padding: 40px;
+  background: #000;
+  color: #fff;
+}
+
+.tv-team {
+  text-align: center;
+}
+
+.tv-name {
+  font-size: 42px;
+  margin-bottom: 20px;
+}
+
+.tv-score {
+  font-size: 120px;
+  font-weight: bold;
+}
+
+.tv-timeouts {
+  font-size: 28px;
+  margin-top: 20px;
+}
+
+.tv-center {
+  text-align: center;
+}
+
+.tv-set {
+  font-size: 40px;
+  margin-bottom: 20px;
+}
+
+.tv-time {
+  font-size: 64px;
+  font-weight: bold;
+}
+
+.tv-status {
+  font-size: 28px;
+  margin-top: 20px;
+}

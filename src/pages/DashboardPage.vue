@@ -63,13 +63,13 @@ onMounted(loadDashboard)
   <div class="page">
     <div class="topbar">
       <div>
-        <h1>Dashboard</h1>
+        <h1>Панель керування</h1>
         <p class="subtitle">Панель керування спортивним табло</p>
       </div>
 
       <div class="topbar-actions">
         <span class="user-email">{{ auth.user?.email }}</span>
-        <button class="logout-btn" @click="logout">Logout</button>
+        <button class="logout-btn" @click="logout">Вийти</button>
       </div>
     </div>
 
@@ -81,26 +81,26 @@ onMounted(loadDashboard)
         <div class="stat-card">
           <h3>Users</h3>
           <p class="stat-value">{{ users.length }}</p>
-          <RouterLink to="/users">Manage users</RouterLink>
+          <RouterLink to="/users">Редагувати користувачів</RouterLink>
         </div>
 
         <div class="stat-card">
           <h3>Screens</h3>
           <p class="stat-value">{{ screens.length }}</p>
-          <RouterLink to="/screens">Manage screens</RouterLink>
+          <RouterLink to="/screens">Редагувати екрани</RouterLink>
         </div>
 
         <div class="stat-card">
           <h3>Active screens</h3>
           <p class="stat-value">{{ activeScreensCount }}</p>
-          <RouterLink to="/screens">Open list</RouterLink>
+          <RouterLink to="/screens">Відкрити список</RouterLink>
         </div>
       </div>
 
       <div class="section">
         <div class="section-header">
           <h2>Recent screens</h2>
-          <RouterLink to="/screens" class="action-link">All screens</RouterLink>
+          <RouterLink to="/screens" class="action-link">Всі екрани</RouterLink>
         </div>
 
         <p v-if="screens.length === 0" class="empty-text">
@@ -115,7 +115,7 @@ onMounted(loadDashboard)
             <p>Активний: {{ screen.isActive ? 'Так' : 'Ні' }}</p>
 
             <div class="actions">
-              <RouterLink :to="`/screens/${screen.id}/control`">Control</RouterLink>
+              <RouterLink :to="`/screens/${screen.id}/control`">Налаштування табло</RouterLink>
 
               <a
                 :href="`${tvBaseUrl}/screens/${screen.id}`"

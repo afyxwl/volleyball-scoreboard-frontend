@@ -6,6 +6,7 @@ import DashboardPage from '../pages/DashboardPage.vue'
 import UsersPage from '../pages/UsersPage.vue'
 import ScreensPage from '../pages/ScreensPage.vue'
 import ControlPage from '../pages/ControlPage.vue'
+import PreviewPage from '../pages/PreviewPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -42,6 +43,12 @@ const router = createRouter({
       path: '/screens/:id/control',
       name: 'screen-control',
       component: ControlPage,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/screens/:id/preview',
+      name: 'screen-preview',
+      component: PreviewPage,
       meta: { requiresAuth: true },
     },
   ],

@@ -33,14 +33,19 @@ const error = ref('')
 const formError = ref('')
 const saving = ref(false)
 const noMatch = ref(false)
+const createErrorDetails = ref('')
 
 const match = ref<MatchState | null>(null)
 
-const team1Name = ref('TEAM A')
-const team2Name = ref('TEAM B')
+const team1Name = ref('КОМАНДА 1')
+const team2Name = ref('КОМАНДА 2')
 const currentSet = ref(1)
 const periodTime = ref('00:00')
 const status = ref<'draft' | 'live' | 'paused'>('draft')
+
+// UI only, поки без backend підтримки
+const fouls1 = ref(0)
+const fouls2 = ref(0)
 
 function syncFormFromMatch(data: MatchState) {
   team1Name.value = data.team1.name
@@ -66,11 +71,11 @@ function validateForm() {
     return false
   }
   if (currentSet.value < 1) {
-    formError.value = 'Номер партії має бути не менше 1'
+    formError.value = 'Номер сету має бути не менше 1'
     return false
   }
   if (!/^\d{2}:\d{2}$/.test(periodTime.value)) {
-    formError.value = 'Час має бути у форматі MM:SS'
+    formError.value = 'Час має бути у форматі ХХ:ХХ'
     return false
   }
 
@@ -84,8 +89,8 @@ async function loadCurrentMatch() {
     error.value = ''
     noMatch.value = false
 
-    const { data } = await api.get(`/screens/${screenId.value}/current`)
-    const payload = data?.data ?? data
+    const response = await api.get(`/screens/${screenId.value}/current`)
+    const payload = response.data?.data ?? response.data
     applyMatch(payload)
   } catch (err: any) {
     if (err.response?.status === 404) {
@@ -99,12 +104,39 @@ async function loadCurrentMatch() {
     loading.value = false
   }
 }
+async function changeFouls(team: 1 | 2, delta: number) {
+  if (!match.value?.id) return
+
+  try {
+    const response = await api.patch(`/matches/${match.value.id}/fouls`, { team, delta })
+    const payload = response.data?.data ?? response.data
+    applyMatch(payload)
+  } catch (err) {
+    console.error(err)
+    formError.value = 'Не вдалося змінити фоли'
+  }
+}
+
+async function pausePeriod() {
+  if (!match.value?.id) return
+
+  try {
+    const response = await api.post(`/matches/${match.value.id}/pause-period`)
+    const payload = response.data?.data ?? response.data
+    applyMatch(payload)
+  } catch (err) {
+    console.error(err)
+    formError.value = 'Не вдалося поставити паузу'
+  }
+}
 
 async function createMatch() {
   if (!validateForm()) return
 
   try {
     saving.value = true
+    formError.value = ''
+    createErrorDetails.value = ''
 
     const response = await api.post('/matches', {
       screenId: screenId.value,
@@ -117,9 +149,11 @@ async function createMatch() {
 
     const payload = response.data?.data ?? response.data
     applyMatch(payload)
-  } catch (err) {
+  } catch (err: any) {
     console.error(err)
     formError.value = 'Не вдалося створити матч'
+    createErrorDetails.value =
+      err?.response?.data?.message || JSON.stringify(err?.response?.data || {})
   } finally {
     saving.value = false
   }
@@ -215,7 +249,6 @@ async function resetMatch() {
     formError.value = 'Не вдалося скинути матч'
   }
 }
-
 onMounted(loadCurrentMatch)
 </script>
 
@@ -223,14 +256,17 @@ onMounted(loadCurrentMatch)
   <div class="page">
     <div class="header">
       <div>
-        <h1>Control Panel — Screen {{ screenId }}</h1>
+        <h1>Панель керування — Екран {{ screenId }}</h1>
         <p class="subtitle">Керування матчем та live preview</p>
       </div>
 
       <div class="header-actions">
-        <RouterLink to="/screens">← Screens</RouterLink>
+        <RouterLink to="/screens">← Екрани</RouterLink>
+        <RouterLink :to="`/screens/${screenId}/preview`">
+          Попередній перегляд
+        </RouterLink>
         <a :href="`${tvBaseUrl}/screens/${screenId}`" target="_blank" rel="noopener">
-          Open TV
+          Відкрити TV
         </a>
       </div>
     </div>
@@ -243,31 +279,31 @@ onMounted(loadCurrentMatch)
         <h2>{{ noMatch ? 'Створення матчу' : 'Налаштування матчу' }}</h2>
 
         <label>
-          Team 1
+          Назва команди 1
           <input v-model="team1Name" />
         </label>
 
         <label>
-          Team 2
+          Назва команди 2
           <input v-model="team2Name" />
         </label>
 
         <label>
-          Set
+          Сет
           <input v-model.number="currentSet" type="number" min="1" />
         </label>
 
         <label>
-          Time
+          Ігровий час
           <input v-model="periodTime" placeholder="00:00" />
         </label>
 
         <label v-if="!noMatch">
-          Status
+          Статус
           <select v-model="status">
-            <option value="draft">draft</option>
-            <option value="live">live</option>
-            <option value="paused">paused</option>
+            <option value="draft">Чернетка</option>
+            <option value="live">Триває</option>
+            <option value="paused">Пауза</option>
           </select>
         </label>
 
@@ -277,57 +313,77 @@ onMounted(loadCurrentMatch)
           </button>
 
           <button v-else @click="saveSettings" :disabled="saving">
-            {{ saving ? 'Збереження...' : 'Зберегти' }}
+            {{ saving ? 'Зберегти налаштування' : 'Зберегти налаштування' }}
           </button>
         </div>
 
         <p v-if="formError" class="error-text">{{ formError }}</p>
+        <p v-if="createErrorDetails" class="details-text">{{ createErrorDetails }}</p>
       </section>
 
       <section v-if="match" class="card">
         <h2>Керування матчем</h2>
 
         <div class="row controls-row">
-          <button @click="startPeriod">Start period</button>
-          <button @click="endPeriod">End period</button>
-          <button class="danger" @click="resetMatch">Reset match</button>
+          <button @click="startPeriod">Почати період</button>
+          <button @click="pausePeriod">Пауза</button>
+          <button @click="endPeriod">Завершити період</button>
+          <button class="danger" @click="resetMatch">Скинути матч</button>
         </div>
 
         <div class="teams">
           <div class="team-box">
             <h3>{{ match.team1.name }}</h3>
             <p class="score">{{ match.team1.score }}</p>
-            <div class="row">
-              <button @click="changeScore(1, 1)">+1</button>
-              <button @click="changeScore(1, -1)">-1</button>
-            </div>
-            <button @click="takeTimeout(1)">Timeout Team 1</button>
-          </div>
 
+            <div class="row">
+              <button @click="changeScore(1, 1)">+1 очко</button>
+              <button @click="changeScore(1, -1)">-1 очко</button>
+            </div>
+
+            <button @click="takeTimeout(1)">Таймаут команді 1</button>
+
+            <div class="foul-box">
+              <strong>Фоли</strong>
+              <div class="row">
+                <button @click="changeFouls(1, 1)">+1 фол</button>
+                <button @click="changeFouls(1, -1)">-1 фол</button>
+              </div>
+            </div>
           <div class="team-box">
             <h3>{{ match.team2.name }}</h3>
             <p class="score">{{ match.team2.score }}</p>
+
             <div class="row">
-              <button @click="changeScore(2, 1)">+1</button>
-              <button @click="changeScore(2, -1)">-1</button>
+              <button @click="changeScore(2, 1)">+1 очко</button>
+              <button @click="changeScore(2, -1)">-1 очко</button>
             </div>
-            <button @click="takeTimeout(2)">Timeout Team 2</button>
+
+            <button @click="takeTimeout(2)">Таймаут команді 2</button>
+
+          <div class="foul-box">
+            <strong>Фоли</strong>
+            <div class="row">
+              <button @click="changeFouls(2, 1)">+1 фол</button>
+              <button @click="changeFouls(2, -1)">-1 фол</button>
+            </div>
           </div>
         </div>
       </section>
 
       <section class="card">
-        <h2>Preview</h2>
+        <h2>Попередній перегляд</h2>
 
         <div class="preview">
           <div class="preview-team">
             <span class="preview-name">{{ team1Name }}</span>
             <strong class="preview-score">{{ match?.team1.score ?? 0 }}</strong>
-            <small>TO: {{ match?.team1.timeoutsUsed ?? 0 }}</small>
+            <small>Таймаути: {{ match?.team1.timeoutsUsed ?? 0 }}</small>
+            <small>Фоли: {{ match?.team1.fouls ?? 0 }}</small>
           </div>
 
           <div class="preview-center">
-            <strong>SET {{ currentSet }}</strong>
+            <strong>СЕТ {{ currentSet }}</strong>
             <span>{{ periodTime }}</span>
             <small>{{ match?.status ?? 'draft' }}</small>
           </div>
@@ -335,7 +391,8 @@ onMounted(loadCurrentMatch)
           <div class="preview-team">
             <span class="preview-name">{{ team2Name }}</span>
             <strong class="preview-score">{{ match?.team2.score ?? 0 }}</strong>
-            <small>TO: {{ match?.team2.timeoutsUsed ?? 0 }}</small>
+            <small>Таймаути: {{ match?.team2.timeoutsUsed ?? 0 }}</small>
+            <small>Фоли: {{ match?.team2.fouls ?? 0 }}</small>
           </div>
         </div>
       </section>
@@ -396,6 +453,10 @@ button {
   color: #fff;
   cursor: pointer;
 }
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 button.danger {
   background: #dc2626;
 }
@@ -421,6 +482,11 @@ button.danger {
   font-size: 48px;
   font-weight: 800;
 }
+.foul-box {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #2b313c;
+}
 .preview {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -429,6 +495,8 @@ button.danger {
 }
 .preview-team {
   text-align: center;
+  display: grid;
+  gap: 6px;
 }
 .preview-name {
   display: block;
@@ -440,8 +508,101 @@ button.danger {
 }
 .preview-center {
   text-align: center;
+  display: grid;
+  gap: 8px;
 }
 .error-text {
   color: #f87171;
+}
+.details-text {
+  color: #fbbf24;
+  margin-top: 8px;
+  word-break: break-word;
+}
+.page {
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.control-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.card {
+  background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+  border: 1px solid #243041;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+button,
+input,
+select {
+  min-height: 44px;
+}
+
+.teams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.team-box {
+  background: #0b1220;
+  border: 1px solid #22314a;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+@media (max-width: 1200px) {
+  .control-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 14px;
+  }
+
+  h1 {
+    font-size: 34px;
+    line-height: 1.1;
+  }
+
+  .row,
+  .header-actions {
+    flex-direction: column;
+  }
+
+  .teams {
+    grid-template-columns: 1fr;
+  }
+
+  .preview {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .preview-center {
+    order: -1;
+  }
 }
 </style>

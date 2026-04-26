@@ -21,12 +21,22 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(email: string, password: string) {
       try {
-        const { data } = await api.post('/auth/login', { email, password })
+        const response = await api.post('/auth/login', { email, password })
 
-        this.token = data.token
+        console.log('LOGIN RESPONSE:', response.data)
+
+        const data = response.data.data
+        const token = data.token
+
+        if (!token) {
+          throw new Error('Token was not returned from /auth/login')
+        }
+
+        this.token = token
         this.user = data.user ?? null
 
-        localStorage.setItem('access_token', data.token)
+        localStorage.setItem('access_token', token)
+        api.defaults.headers.common.Authorization = `Bearer ${token}`
 
         await this.fetchMe()
       } catch (error) {
@@ -44,6 +54,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = ''
       this.user = null
       localStorage.removeItem('access_token')
+      delete api.defaults.headers.common.Authorization
     },
   },
 })
