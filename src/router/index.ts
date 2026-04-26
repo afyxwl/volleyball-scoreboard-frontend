@@ -8,6 +8,7 @@ import ScreensPage from '../pages/ScreensPage.vue'
 import ControlPage from '../pages/ControlPage.vue'
 import PreviewPage from '../pages/PreviewPage.vue'
 import MatchHistoryPage from '../pages/MatchHistoryPage.vue'
+import ScreenMatchHistoryPage from '../pages/ScreenMatchHistoryPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -57,6 +58,12 @@ const router = createRouter({
       name: 'screen-preview',
       component: PreviewPage,
       meta: { requiresAuth: true },
+    },
+    {
+    path: '/screens/:id/history',
+    name: 'screen-match-history',
+    component: ScreenMatchHistoryPage,
+    meta: { requiresAuth: true },
     },
   ],
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import api from '../services/api'
 
@@ -42,7 +42,53 @@ const team2Name = ref('КОМАНДА 2')
 const currentSet = ref(1)
 const periodTime = ref('00:00')
 const status = ref<'draft' | 'live' | 'paused'>('draft')
+const finishComment = ref('')
+const displayedClock = ref('00:00')
+let timerId: number | null = null
 
+function parseClock(value: string) {
+  const [mm, ss] = (value || '00:00').split(':').map(Number)
+  return (mm || 0) * 60 + (ss || 0)
+}
+
+function formatClock(total: number) {
+  const safe = Math.max(0, total)
+  const mm = String(Math.floor(safe / 60)).padStart(2, '0')
+  const ss = String(safe % 60).padStart(2, '0')
+  return `${mm}:${ss}`
+}
+
+function stopTicker() {
+  if (timerId) {
+    clearInterval(timerId)
+    timerId = null
+  }
+}
+
+function startTicker() {
+  stopTicker()
+
+  let seconds = parseClock(periodTime.value || '00:00')
+  displayedClock.value = formatClock(seconds)
+
+  if (status.value !== 'live') return
+
+  timerId = window.setInterval(() => {
+    seconds += 1
+    displayedClock.value = formatClock(seconds)
+    periodTime.value = displayedClock.value
+  }, 1000)
+}
+
+watch(
+  () => [periodTime.value, status.value],
+  () => startTicker(),
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  stopTicker()
+})
 
 const fouls1 = ref(0)
 const fouls2 = ref(0)
@@ -123,7 +169,7 @@ async function pausePeriod() {
 
   try {
     const response = await api.post(`/matches/${match.value.id}/pause-period`, {
-      periodTime: displayedClock.value ?? form.periodTime,
+      periodTime: displayedClock.value,
     })
 
     const payload = response.data?.data ?? response.data
@@ -232,14 +278,12 @@ async function endPeriod() {
 
   try {
     const response = await api.post(`/matches/${match.value.id}/end-period`, {
-      periodTime: periodTime.value, // або displayedClock якщо вже додала
+      periodTime: displayedClock.value,
       comment: finishComment.value,
     })
 
     const payload = response.data?.data ?? response.data
     applyMatch(payload)
-
-    // очищаємо поле після завершення
     finishComment.value = ''
   } catch (err) {
     console.error(err)
@@ -276,8 +320,8 @@ onMounted(loadCurrentMatch)
         <RouterLink :to="`/screens/${screenId}/preview`">
           Попередній перегляд
         </RouterLink>
-        <RouterLink v-if="match?.id" :to="`/matches/${match.id}/history`">
-          Історія матчу
+        <RouterLink :to="`/screens/${screenId}/history`">
+          Історія матчів
         </RouterLink>
         <a :href="`${tvBaseUrl}/screens/${screenId}`" target="_blank" rel="noopener">
           Відкрити TV
@@ -320,9 +364,13 @@ onMounted(loadCurrentMatch)
             <option value="paused">Пауза</option>
           </select>
         </label>
-        <label>
+        <label v-if="match">
           Коментар до завершення матчу
-          <textarea v-model="finishComment" placeholder="Наприклад: перемога команди Boot, технічна перерва..." />
+          <textarea
+            v-model="finishComment"
+            placeholder="Наприклад: перемога команди Boot"
+            rows="3"
+          />
         </label>
 
         <div class="row">
@@ -405,7 +453,7 @@ onMounted(loadCurrentMatch)
 
           <div class="preview-center">
             <strong>СЕТ {{ currentSet }}</strong>
-            <span>{{ periodTime }}</span>
+            <span>{{ displayedClock }}</span>
             <small>{{ match?.status ?? 'draft' }}</small>
           </div>
 
@@ -625,5 +673,15 @@ select {
   .preview-center {
     order: -1;
   }
+}
+textarea {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #394150;
+  background: #0f141b;
+  color: #fff;
+  resize: vertical;
 }
 </style>
