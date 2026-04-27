@@ -15,11 +15,13 @@ type MatchState = {
   team1: {
     name: string
     score: number
+    fouls: number
     timeoutsUsed: number
   }
   team2: {
     name: string
     score: number
+    fouls: number
     timeoutsUsed: number
   }
 }
@@ -90,8 +92,6 @@ onBeforeUnmount(() => {
   stopTicker()
 })
 
-const fouls1 = ref(0)
-const fouls2 = ref(0)
 
 function syncFormFromMatch(data: MatchState) {
   team1Name.value = data.team1.name
