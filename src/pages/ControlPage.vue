@@ -92,7 +92,6 @@ onBeforeUnmount(() => {
 
 const fouls1 = ref(0)
 const fouls2 = ref(0)
-const finishComment = ref('')
 
 function syncFormFromMatch(data: MatchState) {
   team1Name.value = data.team1.name
@@ -155,7 +154,12 @@ async function changeFouls(team: 1 | 2, delta: number) {
   if (!match.value?.id) return
 
   try {
-    const response = await api.patch(`/matches/${match.value.id}/fouls`, { team, delta })
+    const response = await api.patch(`/matches/${match.value.id}/fouls`, {
+      team,
+      delta,
+      periodTime: displayedClock.value,
+    })
+
     const payload = response.data?.data ?? response.data
     applyMatch(payload)
   } catch (err) {
@@ -187,7 +191,6 @@ async function createMatch() {
     saving.value = true
     formError.value = ''
     createErrorDetails.value = ''
-
     const response = await api.post('/matches', {
       screenId: screenId.value,
       sportType: 'volleyball',
@@ -213,7 +216,12 @@ async function changeScore(team: 1 | 2, delta: number) {
   if (!match.value?.id) return
 
   try {
-    const response = await api.patch(`/matches/${match.value.id}/score`, { team, delta })
+    const response = await api.patch(`/matches/${match.value.id}/score`, {
+      team,
+      delta,
+      periodTime: displayedClock.value,
+    })
+
     const payload = response.data?.data ?? response.data
     applyMatch(payload)
   } catch (err) {
@@ -221,7 +229,6 @@ async function changeScore(team: 1 | 2, delta: number) {
     formError.value = 'Не вдалося змінити рахунок'
   }
 }
-
 async function saveSettings() {
   if (!match.value?.id) return
   if (!validateForm()) return
@@ -251,7 +258,11 @@ async function takeTimeout(team: 1 | 2) {
   if (!match.value?.id) return
 
   try {
-    const response = await api.patch(`/matches/${match.value.id}/timeout`, { team })
+    const response = await api.patch(`/matches/${match.value.id}/timeout`, {
+      team,
+      periodTime: displayedClock.value,
+    })
+
     const payload = response.data?.data ?? response.data
     applyMatch(payload)
   } catch (err) {
@@ -259,7 +270,6 @@ async function takeTimeout(team: 1 | 2) {
     formError.value = 'Не вдалося зарахувати таймаут'
   }
 }
-
 async function startPeriod() {
   if (!match.value?.id) return
 
@@ -469,196 +479,303 @@ onMounted(loadCurrentMatch)
   </div>
 </template>
 
+
 <style scoped>
 .page {
-  padding: 24px;
+  min-height: 100vh;
+  padding: 32px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(34, 211, 238, 0.08), transparent 28%),
+    radial-gradient(circle at 85% 20%, rgba(251, 113, 133, 0.08), transparent 28%),
+    #03050a;
+  color: #f8fafc;
 }
+
 .header {
+  max-width: 1280px;
+  margin: 0 auto 28px;
   display: flex;
-  align-items: start;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: 18px;
+  flex-wrap: wrap;
 }
+
+h1 {
+  font-size: clamp(36px, 5vw, 66px);
+  line-height: 1;
+  font-weight: 900;
+  margin: 0;
+}
+
 .subtitle {
-  opacity: 0.75;
-  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 18px;
+  margin-top: 12px;
+  text-align: center;
 }
+
 .header-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
+
+.header-actions a {
+  min-height: 42px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 2px solid #22d3ee;
+  color: #e0f2fe;
+  background: rgba(34, 211, 238, 0.08);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.header-actions a:hover {
+  background: rgba(34, 211, 238, 0.18);
+}
+
 .control-layout {
+  max-width: 1280px;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: 320px 1fr 1fr;
+  grid-template-columns: 340px 1fr 350px;
   gap: 20px;
   align-items: start;
 }
+
 .card {
-  background: #161b22;
-  border: 1px solid #2b313c;
-  border-radius: 16px;
-  padding: 20px;
+  background: linear-gradient(145deg, rgba(8, 13, 25, 0.98), rgba(15, 23, 42, 0.96));
+  border: 2px solid rgba(34, 211, 238, 0.22);
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
 }
+
+.card h2 {
+  margin: 0 0 20px;
+  font-size: 26px;
+  text-align: center;
+}
+
 label {
   display: block;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
 }
+
 input,
-select {
+select,
+textarea {
   width: 100%;
-  margin-top: 6px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #394150;
-  background: #0f141b;
-  color: #fff;
+  margin-top: 8px;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  background: #05070d;
+  color: #f8fafc;
+  font-weight: 700;
+  outline: none;
 }
+
+textarea {
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+}
+
 button {
-  padding: 10px 14px;
-  border: none;
-  border-radius: 10px;
-  background: #2563eb;
-  color: #fff;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 2px solid #22d3ee;
+  background: rgba(34, 211, 238, 0.12);
+  color: #f8fafc;
+  font-weight: 900;
   cursor: pointer;
 }
+
+button:hover {
+  background: rgba(34, 211, 238, 0.24);
+}
+
+button.danger {
+  border-color: #fb7185;
+  background: rgba(251, 113, 133, 0.18);
+}
+
+button.danger:hover {
+  background: rgba(251, 113, 133, 0.3);
+}
+
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
-button.danger {
-  background: #dc2626;
-}
+
 .row {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin-top: 12px;
+  justify-content: center;
 }
+
+.controls-row {
+  margin-bottom: 18px;
+}
+
 .teams {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  margin-top: 16px;
 }
+
 .team-box {
-  background: #0f141b;
-  border: 1px solid #2b313c;
-  border-radius: 14px;
-  padding: 16px;
+  background: rgba(3, 7, 18, 0.95);
+  border: 2px solid rgba(148, 163, 184, 0.22);
+  border-radius: 22px;
+  padding: 18px;
+  text-align: center;
 }
+
+.team-box:first-child {
+  border-color: rgba(34, 211, 238, 0.45);
+}
+
+.team-box:last-child {
+  border-color: rgba(251, 113, 133, 0.45);
+}
+
+.team-box h3 {
+  margin: 0;
+  font-size: 26px;
+  text-transform: uppercase;
+}
+
 .score {
-  font-size: 48px;
-  font-weight: 800;
+  margin: 14px 0;
+  font-size: 64px;
+  line-height: 1;
+  font-weight: 1000;
 }
+
+.team-box:first-child .score {
+  color: #67e8f9;
+}
+
+.team-box:last-child .score {
+  color: #fda4af;
+}
+
 .foul-box {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #2b313c;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
 }
+
+.foul-box strong {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 20px;
+}
+
 .preview {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
 }
+
 .preview-team {
-  text-align: center;
   display: grid;
   gap: 6px;
-}
-.preview-name {
-  display: block;
-  margin-bottom: 8px;
-}
-.preview-score {
-  display: block;
-  font-size: 42px;
-}
-.preview-center {
   text-align: center;
+}
+
+.preview-name {
+  font-size: 18px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.preview-score {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.preview-center {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  text-align: center;
+  min-width: 90px;
 }
+
+.preview-center strong {
+  font-size: 20px;
+}
+
+.preview-center span {
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.preview small {
+  color: #e2e8f0;
+}
+
 .error-text {
-  color: #f87171;
+  color: #fb7185;
+  text-align: center;
+  font-weight: 900;
 }
+
 .details-text {
   color: #fbbf24;
-  margin-top: 8px;
+text-align: center;
   word-break: break-word;
 }
-.page {
-  padding: 20px;
-}
 
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.control-layout {
-  display: grid;
-  grid-template-columns: 340px 1fr 1fr;
-  gap: 20px;
-  align-items: start;
-}
-
-.card {
-  background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
-  border: 1px solid #243041;
-  border-radius: 18px;
-  padding: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-}
-
-button,
-input,
-select {
-  min-height: 44px;
-}
-
-.teams {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.team-box {
-  background: #0b1220;
-  border: 1px solid #22314a;
-  border-radius: 16px;
-  padding: 16px;
-}
-
-@media (max-width: 1200px) {
+@media (max-width: 1180px) {
   .control-layout {
     grid-template-columns: 1fr;
+  }
+
+  .card {
+    width: 100%;
   }
 }
 
 @media (max-width: 768px) {
   .page {
-    padding: 14px;
+    padding: 18px;
   }
 
-  h1 {
-    font-size: 34px;
-    line-height: 1.1;
+  .header {
+    display: block;
   }
 
-  .row,
+  .subtitle {
+    text-align: left;
+  }
+
   .header-actions {
-    flex-direction: column;
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions a,
+  button {
+    width: 100%;
   }
 
   .teams {
@@ -667,21 +784,14 @@ select {
 
   .preview {
     grid-template-columns: 1fr;
-    gap: 18px;
   }
 
   .preview-center {
     order: -1;
   }
-}
-textarea {
-  width: 100%;
-  margin-top: 6px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #394150;
-  background: #0f141b;
-  color: #fff;
-  resize: vertical;
+
+  .score {
+    font-size: 76px;
+  }
 }
 </style>

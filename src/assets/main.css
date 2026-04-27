@@ -1,0 +1,119 @@
+:root {
+  --bg: #03050a;
+  --card: #0b1220;
+  --blue: #22d3ee;
+  --blue-soft: rgba(34, 211, 238, 0.18);
+  --red: #fb7185;
+  --red-soft: rgba(251, 113, 133, 0.18);
+  --text: #f8fafc;
+  --muted: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, Arial, sans-serif;
+}
+
+a {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 32px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(34, 211, 238, 0.08), transparent 28%),
+    radial-gradient(circle at 85% 20%, rgba(251, 113, 133, 0.08), transparent 28%),
+    var(--bg);
+}
+
+.card {
+  background: linear-gradient(145deg, rgba(8, 13, 25, 0.98), rgba(15, 23, 42, 0.96));
+  border: 2px solid rgba(34, 211, 238, 0.22);
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.btn,
+button,
+a.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 2px solid var(--blue);
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.btn:hover,
+button:hover {
+  background: var(--blue-soft);
+}
+
+.btn-red,
+button.danger {
+  border-color: var(--red);
+  background: rgba(251, 113, 133, 0.18);
+}
+
+.btn-red:hover,
+button.danger:hover {
+  background: var(--red-soft);
+}
+
+input,
+select,
+textarea,
+.input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  background: #05070d;
+  color: var(--text);
+  font-weight: 700;
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+}
+
+.error-text {
+  color: var(--red);
+  font-weight: 900;
+}
+
+.success-text {
+  color: var(--blue);
+  font-weight: 900;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 18px;
+  }
+
+  .btn,
+  button,
+  a.btn {
+    width: 100%;
+  }
+}

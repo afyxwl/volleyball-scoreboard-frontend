@@ -8,6 +8,7 @@ import ScreensPage from '../pages/ScreensPage.vue'
 import ControlPage from '../pages/ControlPage.vue'
 import PreviewPage from '../pages/PreviewPage.vue'
 import MatchHistoryPage from '../pages/MatchHistoryPage.vue'
+import AdminPanel from '../pages/AdminPanel.vue'
 import ScreenMatchHistoryPage from '../pages/ScreenMatchHistoryPage.vue'
 
 const router = createRouter({
@@ -46,6 +47,12 @@ const router = createRouter({
     name: 'match-history',
     component: MatchHistoryPage,
     meta: { requiresAuth: true },
+    },
+    {
+    path: '/admin',
+    name: 'admin-panel',
+    component: AdminPanel,
+      meta: { requiresAuth: true },
     },
     {
       path: '/screens/:id/control',
