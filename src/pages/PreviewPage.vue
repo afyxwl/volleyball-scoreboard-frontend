@@ -14,34 +14,60 @@ const noMatch = ref(false)
 const socket = createSocket()
 
 const scoreboard = ref({
+  sportType: 'volleyball',
+
   team1: {
-    name: 'КОМАНДА 1',
+    name: 'TEAM 1',
     score: 0,
     fouls: 0,
     timeoutsUsed: 0,
   },
+
   team2: {
-    name: 'КОМАНДА 2',
+    name: 'TEAM 2',
     score: 0,
     fouls: 0,
     timeoutsUsed: 0,
   },
+
   currentSet: 1,
+
   status: 'draft',
+
   isActive: false,
+
   clock: {
     time: '00:00',
     isRunning: false,
   },
-})
 
+  shotClock: {
+    seconds: 24,
+    isRunning: false,
+    defaultSeconds: 24,
+  },
+
+  theme: {
+    team1Color: '#67e8f9',
+    team2Color: '#fda4af',
+    fontFamily: 'system',
+    boardStyle: 'neon',
+  },
+
+  setScores: {
+    team1: [] as number[],
+    team2: [] as number[],
+  },
+})
 const displayedClock = ref('00:00')
+const displayedShotClock = ref('24')
 let timerId: number | null = null
 
 function parseClock(value: string) {
   const [mm, ss] = (value || '00:00').split(':').map(Number)
   return (mm || 0) * 60 + (ss || 0)
 }
+
 
 function formatClock(total: number) {
   const safe = Math.max(0, total)
@@ -77,15 +103,9 @@ watch(
   { immediate: true }
 )
 
-function mapStatus(status: string) {
-  if (status === 'live') return 'Триває'
-  if (status === 'paused') return 'Пауза'
-  if (status === 'finished') return 'Завершено'
-  return 'Чернетка'
-}
-
 function applyScoreboard(payload: any) {
   const data = payload?.data ?? payload
+
   noMatch.value = false
 
   scoreboard.value = {
@@ -93,22 +113,85 @@ function applyScoreboard(payload: any) {
       name: data.team1?.name ?? scoreboard.value.team1.name,
       score: data.team1?.score ?? scoreboard.value.team1.score,
       fouls: data.team1?.fouls ?? scoreboard.value.team1.fouls,
-      timeoutsUsed: data.team1?.timeoutsUsed ?? scoreboard.value.team1.timeoutsUsed,
+      timeoutsUsed:
+        data.team1?.timeoutsUsed ?? scoreboard.value.team1.timeoutsUsed,
     },
+
     team2: {
       name: data.team2?.name ?? scoreboard.value.team2.name,
       score: data.team2?.score ?? scoreboard.value.team2.score,
       fouls: data.team2?.fouls ?? scoreboard.value.team2.fouls,
-      timeoutsUsed: data.team2?.timeoutsUsed ?? scoreboard.value.team2.timeoutsUsed,
+      timeoutsUsed:
+        data.team2?.timeoutsUsed ?? scoreboard.value.team2.timeoutsUsed,
     },
-    currentSet: data.currentSet ?? scoreboard.value.currentSet,
-    status: data.status ?? scoreboard.value.status,
-    isActive: data.isActive ?? scoreboard.value.isActive,
+
+    currentSet:
+      data.currentSet ?? scoreboard.value.currentSet,
+
+    status:
+      data.status ?? scoreboard.value.status,
+
+    isActive:
+      data.isActive ?? scoreboard.value.isActive,
+
+    sportType:
+      data.sportType ?? scoreboard.value.sportType,
+
     clock: {
-      time: data.clock?.time ?? scoreboard.value.clock.time,
-      isRunning: data.clock?.isRunning ?? scoreboard.value.clock.isRunning,
+      time:
+        data.clock?.time ?? scoreboard.value.clock.time,
+
+      isRunning:
+        data.clock?.isRunning ??
+        scoreboard.value.clock.isRunning,
+    },
+
+    shotClock: {
+      seconds:
+        data.shotClock?.seconds ??
+        scoreboard.value.shotClock.seconds,
+
+      isRunning:
+        data.shotClock?.isRunning ??
+        scoreboard.value.shotClock.isRunning,
+
+      defaultSeconds:
+        data.shotClock?.defaultSeconds ??
+        scoreboard.value.shotClock.defaultSeconds,
+    },
+
+    theme: {
+      team1Color:
+        data.theme?.team1Color ??
+        scoreboard.value.theme.team1Color,
+
+      team2Color:
+        data.theme?.team2Color ??
+        scoreboard.value.theme.team2Color,
+
+      fontFamily:
+        data.theme?.fontFamily ??
+        scoreboard.value.theme.fontFamily,
+
+      boardStyle:
+        data.theme?.boardStyle ??
+        scoreboard.value.theme.boardStyle,
+    },
+
+    setScores: {
+      team1: Array.isArray(data.setScores?.team1)
+        ? data.setScores.team1
+        : scoreboard.value.setScores.team1,
+
+      team2: Array.isArray(data.setScores?.team2)
+        ? data.setScores.team2
+        : scoreboard.value.setScores.team2,
     },
   }
+
+  displayedShotClock.value = String(
+    data.shotClock?.seconds ?? 24
+  ).padStart(2, '0')
 }
 
 async function loadCurrentState() {
@@ -177,65 +260,6 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped>
-.preview-page {
-  min-height: 100vh;
-  background: #0f1115;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-}
-.message {
-  text-align: center;
-  font-size: 28px;
-}
-.error {
-  color: #f87171;
-}
-.scoreboard {
-  width: 100%;
-  max-width: 1700px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 40px;
-  align-items: center;
-}
-.team {
-  text-align: center;
-}
-.team-name {
-  font-size: 52px;
-  font-weight: 700;
-  margin-bottom: 24px;
-}
-.team-score {
-  font-size: 180px;
-  font-weight: 900;
-  line-height: 1;
-  margin-bottom: 20px;
-}
-.meta {
-  font-size: 28px;
-  margin-top: 8px;
-}
-.center {
-  text-align: center;
-}
-.set {
-  font-size: 42px;
-  margin-bottom: 20px;
-}
-.clock {
-  font-size: 84px;
-  font-weight: 800;
-  margin-bottom: 18px;
-}
-.status {
-  font-size: 28px;
-  opacity: 0.85;
-}
 <style scoped>
 .preview-page {
   width: 100vw;

@@ -3,22 +3,46 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import api from '../services/api'
 import ScoreboardDisplay from '../components/ScoreboardDisplay.vue'
+type SportType = 'volleyball' | 'basketball'
+
 
 type MatchState = {
   id?: number
+  sportType: SportType
   currentSet: number
   status: string
   isActive: boolean
+
   clock: {
     time: string | null
     isRunning: boolean
   }
+
+  shotClock: {
+    seconds: number
+    isRunning: boolean
+    defaultSeconds: number
+  }
+
+  theme: {
+    team1Color: string
+    team2Color: string
+    fontFamily: 'system' | 'display' | 'mono'
+    boardStyle: string
+  }
+
+  setScores: {
+    team1: number[]
+    team2: number[]
+  }
+
   team1: {
-    name: string  
+    name: string
     score: number
     fouls: number
     timeoutsUsed: number
   }
+
   team2: {
     name: string
     score: number
@@ -42,7 +66,6 @@ const team1Color = ref('#67e8f9')
 const team2Color = ref('#fda4af')
 const fontFamily = ref<'system' | 'mono' | 'display'>('system')
 const shotClockSeconds = ref(24)
-const displayedShotClock = ref('24')
 
 const match = ref<MatchState | null>(null)
 
@@ -53,7 +76,56 @@ const periodTime = ref('00:00')
 const status = ref<'draft' | 'live' | 'paused'>('draft')
 const finishComment = ref('')
 const displayedClock = ref('00:00')
+const displayedShotClock = ref('24')
 let timerId: number | null = null
+
+const previewScoreboard = computed<MatchState>(() => {
+  return {
+    id: match.value?.id,
+    sportType: sportType.value,
+    currentSet: currentSet.value,
+    status: match.value?.status ?? status.value,
+    isActive: match.value?.isActive ?? true,
+
+    clock: {
+      time: periodTime.value,
+      isRunning: match.value?.clock?.isRunning ?? false,
+    },
+
+    shotClock: {
+      seconds: shotClockSeconds.value,
+      isRunning: match.value?.shotClock?.isRunning ?? false,
+      defaultSeconds: 24,
+    },
+
+    theme: {
+      team1Color: team1Color.value,
+      team2Color: team2Color.value,
+      fontFamily: fontFamily.value,
+      boardStyle: 'neon',
+    },
+
+    setScores: {
+      team1: match.value?.setScores?.team1 ?? [],
+      team2: match.value?.setScores?.team2 ?? [],
+    },
+
+    team1: {
+      name: team1Name.value,
+      score: match.value?.team1?.score ?? 0,
+      fouls: match.value?.team1?.fouls ?? 0,
+      timeoutsUsed: match.value?.team1?.timeoutsUsed ?? 0,
+    },
+
+    team2: {
+      name: team2Name.value,
+      score: match.value?.team2?.score ?? 0,
+      fouls: match.value?.team2?.fouls ?? 0,
+      timeoutsUsed: match.value?.team2?.timeoutsUsed ?? 0,
+    },
+  }
+})
+syncFormFromMatch
 
 function parseClock(value: string) {
   const [mm, ss] = (value || '00:00').split(':').map(Number)
@@ -74,13 +146,9 @@ function stopTicker() {
   }
 }
 
-function defaultPeriodTime(sport: string) {
-  return sport === 'basketball' ? '10:00' : '00:00'
-}
 
 function startTicker() {
-  stopTicker()
-
+  stopTicker() 
   let seconds = parseClock(periodTime.value || '00:00')
   displayedClock.value = formatClock(seconds)
 
