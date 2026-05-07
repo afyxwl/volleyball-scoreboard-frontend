@@ -10,6 +10,7 @@ import PreviewPage from '../pages/PreviewPage.vue'
 import MatchHistoryPage from '../pages/MatchHistoryPage.vue'
 import AdminPanel from '../pages/AdminPanel.vue'
 import ScreenMatchHistoryPage from '../pages/ScreenMatchHistoryPage.vue'
+import FullscreenControlPage from '../pages/FullscreenControlPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -72,6 +73,11 @@ const router = createRouter({
     component: ScreenMatchHistoryPage,
     meta: { requiresAuth: true },
     },
+    {
+    path: '/screens/:id/control/full',
+    name: 'screen-control-full',
+    component: FullscreenControlPage,
+    }
   ],
 })
 

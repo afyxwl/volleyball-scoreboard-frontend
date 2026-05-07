@@ -3,6 +3,7 @@ import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../services/api'
 import { createSocket } from '../services/socket'
+import ScoreboardDisplay from '../components/ScoreboardDisplay.vue' 
 
 const route = useRoute()
 const screenId = route.params.id
@@ -153,9 +154,11 @@ onBeforeUnmount(() => {
 })
 </script>
 
-<template>
+ <template>
   <div class="preview-page">
-    <div v-if="loading" class="message">Завантаження...</div>
+    <div v-if="loading" class="message">
+      Завантаження...
+    </div>
 
     <div v-else-if="error" class="message error">
       {{ error }}
@@ -165,27 +168,12 @@ onBeforeUnmount(() => {
       Попередній перегляд недоступний: немає активного матчу
     </div>
 
-    <div v-else class="scoreboard">
-      <div class="team">
-        <div class="team-name">{{ scoreboard.team1.name }}</div>
-        <div class="team-score">{{ scoreboard.team1.score }}</div>
-        <div class="meta">Таймаути: {{ scoreboard.team1.timeoutsUsed }}</div>
-        <div class="meta">Фоли: {{ scoreboard.team1.fouls }}</div>
-      </div>
-
-      <div class="center">
-        <div class="set">СЕТ {{ scoreboard.currentSet }}</div>
-        <div class="clock">{{ displayedClock }}</div>
-        <div class="status">{{ mapStatus(scoreboard.status) }}</div>
-      </div>
-
-      <div class="team">
-        <div class="team-name">{{ scoreboard.team2.name }}</div>
-        <div class="team-score">{{ scoreboard.team2.score }}</div>
-        <div class="meta">Таймаути: {{ scoreboard.team2.timeoutsUsed }}</div>
-        <div class="meta">Фоли: {{ scoreboard.team2.fouls }}</div>
-      </div>
-    </div>
+    <ScoreboardDisplay
+      v-else
+      :scoreboard="scoreboard"
+      :displayed-clock="displayedClock"
+      :displayed-shot-clock="displayedShotClock"
+    />
   </div>
 </template>
 
@@ -247,5 +235,27 @@ onBeforeUnmount(() => {
 .status {
   font-size: 28px;
   opacity: 0.85;
+}
+<style scoped>
+.preview-page {
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: #03050a;
+}
+
+.message {
+  width: 100vw;
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  color: #f8fafc;
+  background: #03050a;
+  font-size: clamp(28px, 4vw, 58px);
+  font-weight: 900;
+}
+
+.error {
+  color: #fb7185;
 }
 </style>

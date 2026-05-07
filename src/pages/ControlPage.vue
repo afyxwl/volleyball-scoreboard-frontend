@@ -2,6 +2,7 @@
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import api from '../services/api'
+import ScoreboardDisplay from '../components/ScoreboardDisplay.vue'
 
 type MatchState = {
   id?: number
@@ -13,7 +14,7 @@ type MatchState = {
     isRunning: boolean
   }
   team1: {
-    name: string
+    name: string  
     score: number
     fouls: number
     timeoutsUsed: number
@@ -36,6 +37,12 @@ const formError = ref('')
 const saving = ref(false)
 const noMatch = ref(false)
 const createErrorDetails = ref('')
+const sportType = ref<'volleyball' | 'basketball'>('volleyball')
+const team1Color = ref('#67e8f9')
+const team2Color = ref('#fda4af')
+const fontFamily = ref<'system' | 'mono' | 'display'>('system')
+const shotClockSeconds = ref(24)
+const displayedShotClock = ref('24')
 
 const match = ref<MatchState | null>(null)
 
@@ -67,6 +74,10 @@ function stopTicker() {
   }
 }
 
+function defaultPeriodTime(sport: string) {
+  return sport === 'basketball' ? '10:00' : '00:00'
+}
+
 function startTicker() {
   stopTicker()
 
@@ -94,11 +105,18 @@ onBeforeUnmount(() => {
 
 
 function syncFormFromMatch(data: MatchState) {
+  sportType.value = data.sportType ?? 'volleyball'
   team1Name.value = data.team1.name
   team2Name.value = data.team2.name
   currentSet.value = data.currentSet
   periodTime.value = data.clock.time ?? '00:00'
   status.value = (data.status as 'draft' | 'live' | 'paused') ?? 'draft'
+  team1Color.value = data.theme?.team1Color ?? '#67e8f9'
+  team2Color.value = data.theme?.team2Color ?? '#fda4af'
+  fontFamily.value = (data.theme?.fontFamily as 'system' | 'mono' | 'display') ?? 'system'
+
+  shotClockSeconds.value = data.shotClock?.seconds ?? 24
+  displayedShotClock.value = String(data.shotClock?.seconds ?? 24).padStart(2, '0')
 }
 
 function applyMatch(data: MatchState) {
@@ -192,13 +210,18 @@ async function createMatch() {
     formError.value = ''
     createErrorDetails.value = ''
     const response = await api.post('/matches', {
-      screenId: screenId.value,
-      sportType: 'volleyball',
-      team1Name: team1Name.value.trim(),
-      team2Name: team2Name.value.trim(),
-      currentSet: currentSet.value,
-      periodTime: periodTime.value,
-    })
+    screenId: screenId.value,
+    sportType: sportType.value,
+    team1Name: team1Name.value.trim(),
+    team2Name: team2Name.value.trim(),
+    currentSet: currentSet.value,
+    periodTime: periodTime.value,
+    team1Color: team1Color.value,
+    team2Color: team2Color.value,
+    fontFamily: fontFamily.value,
+    boardStyle: 'neon',
+    shotClockSeconds: shotClockSeconds.value,
+  })
 
     const payload = response.data?.data ?? response.data
     applyMatch(payload)
@@ -237,12 +260,18 @@ async function saveSettings() {
     saving.value = true
 
     const response = await api.patch(`/matches/${match.value.id}/settings`, {
-      team1Name: team1Name.value.trim(),
-      team2Name: team2Name.value.trim(),
-      currentSet: currentSet.value,
-      periodTime: periodTime.value,
-      status: status.value,
-    })
+    sportType: sportType.value,
+    team1Name: team1Name.value.trim(),
+    team2Name: team2Name.value.trim(),
+    currentSet: currentSet.value,
+    periodTime: periodTime.value,
+    status: status.value,
+    team1Color: team1Color.value,
+    team2Color: team2Color.value,
+    fontFamily: fontFamily.value,
+    boardStyle: 'neon',
+    shotClockSeconds: shotClockSeconds.value,
+  })
 
     const payload = response.data?.data ?? response.data
     applyMatch(payload)
@@ -251,6 +280,23 @@ async function saveSettings() {
     formError.value = 'Не вдалося зберегти налаштування'
   } finally {
     saving.value = false
+  }
+}
+async function updateShotClock(seconds: number, isRunning?: boolean) {
+  if (!match.value?.id) return
+
+  try {
+    const response = await api.patch(`/matches/${match.value.id}/shot-clock`, {
+      seconds,
+      isRunning,
+      periodTime: displayedClock.value,
+    })
+
+    const payload = response.data?.data ?? response.data
+    applyMatch(payload)
+  } catch (err) {
+    console.error(err)
+    formError.value = 'Не вдалося оновити таймер атаки'
   }
 }
 
@@ -333,6 +379,9 @@ onMounted(loadCurrentMatch)
         <RouterLink :to="`/screens/${screenId}/history`">
           Історія матчів
         </RouterLink>
+        <RouterLink :to="`/screens/${screenId}/control/full`">
+          Повноекранне керування
+        </RouterLink>
         <a :href="`${tvBaseUrl}/screens/${screenId}`" target="_blank" rel="noopener">
           Відкрити TV
         </a>
@@ -347,6 +396,14 @@ onMounted(loadCurrentMatch)
         <h2>{{ noMatch ? 'Створення матчу' : 'Налаштування матчу' }}</h2>
 
         <label>
+          Вид спорту
+          <select v-model="sportType">
+            <option value="volleyball">Волейбол</option>
+            <option value="basketball">Баскетбол</option>
+          </select>
+        </label>
+
+        <label>
           Назва команди 1
           <input v-model="team1Name" />
         </label>
@@ -357,7 +414,7 @@ onMounted(loadCurrentMatch)
         </label>
 
         <label>
-          Сет
+          Сет / період
           <input v-model.number="currentSet" type="number" min="1" />
         </label>
 
@@ -374,6 +431,7 @@ onMounted(loadCurrentMatch)
             <option value="paused">Пауза</option>
           </select>
         </label>
+
         <label v-if="match">
           Коментар до завершення матчу
           <textarea
@@ -383,13 +441,39 @@ onMounted(loadCurrentMatch)
           />
         </label>
 
+        <div class="color-grid">
+          <label>
+            Колір команди 1
+            <input v-model="team1Color" type="color" />
+          </label>
+
+          <label>
+            Колір команди 2
+            <input v-model="team2Color" type="color" />
+          </label>
+        </div>
+
+        <label>
+          Стиль шрифту табло
+          <select v-model="fontFamily">
+            <option value="system">Системний</option>
+            <option value="display">Спортивний</option>
+            <option value="mono">Моноширинний</option>
+          </select>
+        </label>
+
+        <label v-if="sportType === 'basketball'">
+          Таймер атаки, сек
+          <input v-model.number="shotClockSeconds" type="number" min="0" max="99" />
+        </label>
+
         <div class="row">
           <button v-if="noMatch" @click="createMatch" :disabled="saving">
             {{ saving ? 'Створення...' : 'Створити матч' }}
           </button>
 
           <button v-else @click="saveSettings" :disabled="saving">
-            {{ saving ? 'Зберегти налаштування' : 'Зберегти налаштування' }}
+            {{ saving ? 'Збереження...' : 'Зберегти налаштування' }}
           </button>
         </div>
 
@@ -407,6 +491,20 @@ onMounted(loadCurrentMatch)
           <button class="danger" @click="resetMatch">Скинути матч</button>
         </div>
 
+        <div
+          v-if="match?.sportType === 'basketball'"
+          class="foul-box"
+        >
+          <strong>Таймер атаки: {{ displayedShotClock }}</strong>
+
+          <div class="row">
+            <button @click="updateShotClock(24, true)">24 сек</button>
+            <button @click="updateShotClock(14, true)">14 сек</button>
+            <button @click="updateShotClock(shotClockSeconds, true)">Старт атаки</button>
+            <button @click="updateShotClock(shotClockSeconds, false)">Пауза атаки</button>
+          </div>
+        </div>
+
         <div class="teams">
           <div class="team-box">
             <h3>{{ match.team1.name }}</h3>
@@ -416,6 +514,20 @@ onMounted(loadCurrentMatch)
               <button @click="changeScore(1, 1)">+1 очко</button>
               <button @click="changeScore(1, -1)">-1 очко</button>
             </div>
+
+            <button
+              v-if="match?.sportType === 'basketball'"
+              @click="changeScore(1, 2)"
+            >
+              +2 очки
+            </button>
+
+            <button
+              v-if="match?.sportType === 'basketball'"
+              @click="changeScore(1, 3)"
+            >
+              +3 очки
+            </button>
 
             <button @click="takeTimeout(1)">Таймаут команді 1</button>
 
@@ -437,6 +549,20 @@ onMounted(loadCurrentMatch)
               <button @click="changeScore(2, -1)">-1 очко</button>
             </div>
 
+            <button
+              v-if="match?.sportType === 'basketball'"
+              @click="changeScore(2, 2)"
+            >
+              +2 очки
+            </button>
+
+            <button
+              v-if="match?.sportType === 'basketball'"
+              @click="changeScore(2, 3)"
+            >
+              +3 очки
+            </button>
+
             <button @click="takeTimeout(2)">Таймаут команді 2</button>
 
             <div class="foul-box">
@@ -454,25 +580,12 @@ onMounted(loadCurrentMatch)
         <h2>Попередній перегляд</h2>
 
         <div class="preview">
-          <div class="preview-team">
-            <span class="preview-name">{{ team1Name }}</span>
-            <strong class="preview-score">{{ match?.team1.score ?? 0 }}</strong>
-            <small>Таймаути: {{ match?.team1.timeoutsUsed ?? 0 }}</small>
-            <small>Фоли: {{ match?.team1.fouls ?? 0 }}</small>
-          </div>
-
-          <div class="preview-center">
-            <strong>СЕТ {{ currentSet }}</strong>
-            <span>{{ displayedClock }}</span>
-            <small>{{ match?.status ?? 'draft' }}</small>
-          </div>
-
-          <div class="preview-team">
-            <span class="preview-name">{{ team2Name }}</span>
-            <strong class="preview-score">{{ match?.team2.score ?? 0 }}</strong>
-            <small>Таймаути: {{ match?.team2.timeoutsUsed ?? 0 }}</small>
-            <small>Фоли: {{ match?.team2.fouls ?? 0 }}</small>
-          </div>
+          <ScoreboardDisplay
+            :scoreboard="previewScoreboard"
+            :displayed-clock="displayedClock"
+            :displayed-shot-clock="displayedShotClock"
+            preview
+          />
         </div>
       </section>
     </div>
