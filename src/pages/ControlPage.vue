@@ -547,6 +547,8 @@ onMounted(loadCurrentMatch)
 
         <p v-if="formError" class="error-text">{{ formError }}</p>
         <p v-if="createErrorDetails" class="details-text">{{ createErrorDetails }}</p>
+        </section>
+        
   <section v-if="match" class="card">
   <h2>Керування матчем</h2>
 

@@ -72,6 +72,7 @@ async function createScreen() {
   } finally {
     saving.value = false
   }
+}
 
 
 onMounted(loadScreens)
@@ -150,7 +151,7 @@ onMounted(loadScreens)
 }
 .layout {
   display: grid;
-  minmax(0, 1fr)
+  grid-template-columns: 340px minmax(0, 1fr);
   gap: 20px;
 }
 .card {
