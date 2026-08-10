@@ -56,8 +56,7 @@ async function createScreen() {
     await loadScreens()
   } catch (err: any) {
     console.error(err)
-    }
-
+    
   const status = err?.response?.status
 
   if (status === 409) {
