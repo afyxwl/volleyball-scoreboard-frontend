@@ -146,20 +146,40 @@ function stopTicker() {
   }
 }
 
-
 function startTicker() {
-  stopTicker() 
+  stopTicker()
+
   let seconds = parseClock(periodTime.value || '00:00')
+
   displayedClock.value = formatClock(seconds)
 
-  if (status.value !== 'live') return
+  if (status.value !== 'live') {
+    return
+  }
 
   timerId = window.setInterval(() => {
-    seconds += 1
+    if (sportType.value === 'basketball') {
+      seconds = Math.max(0, seconds - 1)
+    } else {
+      seconds += 1
+    }
+
     displayedClock.value = formatClock(seconds)
-    periodTime.value = displayedClock.value
+
+    if (
+      sportType.value === 'basketball' &&
+      seconds === 0
+    ) {
+      stopTicker()
+    }
   }, 1000)
 }
+
+watch(
+  () => [status.value, sportType.value],
+  () => startTicker(),
+  { immediate: true }
+)
 
 watch(
   () => [periodTime.value, status.value],
@@ -548,7 +568,7 @@ onMounted(loadCurrentMatch)
         <p v-if="formError" class="error-text">{{ formError }}</p>
         <p v-if="createErrorDetails" class="details-text">{{ createErrorDetails }}</p>
         </section>
-        
+
   <section v-if="match" class="card">
   <h2>Керування матчем</h2>
 
