@@ -12,23 +12,15 @@ const match = ref<any>(null)
 const loading = ref(true)
 const error = ref('')
 const displayedClock = ref('00:00')
-let gameTimerId: number | null = null
-let serverOffsetMs = 0
 const displayedShotClock = ref('24')
+
 let gameTimerId: number | null = null
 let shotTimerId: number | null = null
+let serverOffsetMs = 0
 
 function parseClock(value: string) {
   const [mm, ss] = (value || '00:00').split(':').map(Number)
   return (mm || 0) * 60 + (ss || 0)
-}
-
-function formatClock(total: number) {
-  const safe = Math.max(0, total)
-  const mm = String(Math.floor(safe / 60)).padStart(2, '0')
-  const ss = String(safe % 60).padStart(2, '0')
-
-  return `${mm}:${ss}`
 }
 
 function formatShotClock(total: number) {
@@ -48,41 +40,6 @@ function stopShotTicker() {
     shotTimerId = null
   }
 }
-function startGameTicker() {
-  stopGameTicker()
-
-  let seconds = parseClock(displayedClock.value)
-
-  if (match.value?.status !== 'live') {
-    return
-  }
-
-  gameTimerId = window.setInterval(() => {
-    if (match.value?.sportType === 'basketball') {
-      seconds = Math.max(0, seconds - 1)
-    } else {
-      seconds += 1
-    }
-
-    displayedClock.value = formatClock(seconds)
-
-    if (
-      match.value?.sportType === 'basketball' &&
-      seconds === 0
-    ) {
-      stopGameTicker()
-    }
-  }, 1000)
-}
-
-function parseClock(value: string) {
-  const [mm, ss] =
-    (value || '00:00')
-      .split(':')
-      .map(Number)
-
-  return (mm || 0) * 60 + (ss || 0)
-}
 
 function formatClock(total: number) {
   const safe = Math.max(0, Math.floor(total))
@@ -98,12 +55,6 @@ function formatClock(total: number) {
   return `${mm}:${ss}`
 }
 
-function stopGameTicker() {
-  if (gameTimerId !== null) {
-    clearInterval(gameTimerId)
-    gameTimerId = null
-  }
-}
 
 function updateDisplayedClock() {
   const clock = match.value?.clock
