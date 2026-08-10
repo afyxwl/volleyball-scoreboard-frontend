@@ -12,6 +12,8 @@ const match = ref<any>(null)
 const loading = ref(true)
 const error = ref('')
 const displayedClock = ref('00:00')
+let gameTimerId: number | null = null
+let serverOffsetMs = 0
 const displayedShotClock = ref('24')
 let gameTimerId: number | null = null
 let shotTimerId: number | null = null
@@ -72,6 +74,97 @@ function startGameTicker() {
     }
   }, 1000)
 }
+
+function parseClock(value: string) {
+  const [mm, ss] =
+    (value || '00:00')
+      .split(':')
+      .map(Number)
+
+  return (mm || 0) * 60 + (ss || 0)
+}
+
+function formatClock(total: number) {
+  const safe = Math.max(0, Math.floor(total))
+
+  const mm = String(
+    Math.floor(safe / 60)
+  ).padStart(2, '0')
+
+  const ss = String(
+    safe % 60
+  ).padStart(2, '0')
+
+  return `${mm}:${ss}`
+}
+
+function stopGameTicker() {
+  if (gameTimerId !== null) {
+    clearInterval(gameTimerId)
+    gameTimerId = null
+  }
+}
+
+function updateDisplayedClock() {
+  const clock = match.value?.clock
+
+  if (!clock) return
+
+  const base =
+    parseClock(clock.time ?? '00:00')
+
+  if (
+    !clock.isRunning ||
+    !clock.startedAt
+  ) {
+    displayedClock.value =
+      formatClock(base)
+
+    return
+  }
+
+  const now =
+    Date.now() + serverOffsetMs
+
+  const started =
+    new Date(clock.startedAt).getTime()
+
+  const elapsed = Math.max(
+    0,
+    Math.floor((now - started) / 1000)
+  )
+
+  if (
+    match.value?.sportType === 'basketball'
+  ) {
+    displayedClock.value =
+      formatClock(
+        Math.max(0, base - elapsed)
+      )
+  } else {
+    displayedClock.value =
+      formatClock(base + elapsed)
+  }
+}
+
+function startGameTicker() {
+  stopGameTicker()
+
+  updateDisplayedClock()
+
+  if (
+    !match.value?.clock?.isRunning ||
+    !match.value?.clock?.startedAt
+  ) {
+    return
+  }
+
+  gameTimerId = window.setInterval(
+    updateDisplayedClock,
+    250
+  )
+}
+
 function startShotTicker() {
   stopShotTicker()
 
@@ -100,15 +193,17 @@ function startShotTicker() {
 async function loadCurrentMatch() {
   try {
     loading.value = true
-    const response = await api.get(`/screens/${screenId.value}/current`)
-    match.value = response.data?.data ?? response.data
-    displayedClock.value = match.value?.clock?.time ?? '00:00'
-    displayedShotClock.value = String(match.value?.shotClock?.seconds ?? 24).padStart(2, '0')
-  startGameTicker()
-  startShotTicker()
+
+    const response =
+      await api.get(
+        `/screens/${screenId.value}/current`
+      )
+
+    applyMatch(response.data)
   } catch (err) {
     console.error(err)
-    error.value = 'Не вдалося завантажити матч'
+    error.value =
+      'Не вдалося завантажити матч'
   } finally {
     loading.value = false
   }
@@ -120,9 +215,11 @@ function applyMatch(payload: any) {
 
   match.value = data
 
-  displayedClock.value =
-    data?.clock?.time ??
-    displayedClock.value
+  if (data?.serverNow) {
+    serverOffsetMs =
+      new Date(data.serverNow).getTime() -
+      Date.now()
+  }
 
   displayedShotClock.value = String(
     data?.shotClock?.seconds ?? 24
@@ -131,7 +228,6 @@ function applyMatch(payload: any) {
   startGameTicker()
   startShotTicker()
 }
-
 async function changeScore(team: 1 | 2, delta: number) {
   if (!match.value?.id) return
 
@@ -144,14 +240,16 @@ async function changeScore(team: 1 | 2, delta: number) {
   applyMatch(response.data)
 }
 
-async function changeTimeout(team: 1 | 2, delta: number) {
+  async function changeTimeout(team: 1 | 2, delta: number) {
   if (!match.value?.id) return
 
-  const response = await api.patch(`/matches/${match.value.id}/timeout`, {
-    team,
-    delta,
-    periodTime: displayedClock.value,
-  })
+  const response = await api.patch(
+    `/matches/${match.value.id}/timeout`,
+    {
+      team,
+      delta,
+    }
+  )
 
   applyMatch(response.data)
 }
@@ -159,27 +257,33 @@ async function changeTimeout(team: 1 | 2, delta: number) {
 async function changeFouls(team: 1 | 2, delta: number) {
   if (!match.value?.id) return
 
-  const response = await api.patch(`/matches/${match.value.id}/fouls`, {
-    team,
-    delta,
-    periodTime: displayedClock.value,
-  })
+  const response = await api.patch(
+    `/matches/${match.value.id}/fouls`,
+    {
+      team,
+      delta,
+    }
+  )
 
   applyMatch(response.data)
 }
 
 async function startPeriod() {
   if (!match.value?.id) return
-  const response = await api.post(`/matches/${match.value.id}/start-period`)
+
+  const response = await api.post(
+    `/matches/${match.value.id}/start-period`
+  )
+
   applyMatch(response.data)
 }
 
 async function pausePeriod() {
   if (!match.value?.id) return
 
-  const response = await api.post(`/matches/${match.value.id}/pause-period`, {
-    periodTime: displayedClock.value,
-  })
+  const response = await api.post(
+    `/matches/${match.value.id}/pause-period`
+  )
 
   applyMatch(response.data)
 }
@@ -187,25 +291,29 @@ async function pausePeriod() {
 async function endPeriod() {
   if (!match.value?.id) return
 
-  const response = await api.post(`/matches/${match.value.id}/end-period`, {
-    periodTime: displayedClock.value,
-  })
+  const response = await api.post(
+    `/matches/${match.value.id}/end-period`
+  )
 
   applyMatch(response.data)
 }
 
-async function updateShotClock(seconds: number, isRunning?: boolean) {
+async function updateShotClock(
+  seconds: number,
+  isRunning?: boolean
+) {
   if (!match.value?.id) return
 
-  const response = await api.patch(`/matches/${match.value.id}/shot-clock`, {
-    seconds,
-    isRunning,
-    periodTime: displayedClock.value,
-  })
+  const response = await api.patch(
+    `/matches/${match.value.id}/shot-clock`,
+    {
+      seconds,
+      isRunning,
+    }
+  )
 
   applyMatch(response.data)
 }
-
 onMounted(async () => {
   await loadCurrentMatch()
 
@@ -617,3 +725,4 @@ h1 {
   }
 }
 </style>
+ 

@@ -12,11 +12,13 @@ type MatchState = {
   currentSet: number
   status: string
   isActive: boolean
+  serverNow?: string | null
 
-  clock: {
-    time: string | null
-    isRunning: boolean
-  }
+ clock: {
+  time: string | null
+  isRunning: boolean
+  startedAt?: string | null
+}
 
   shotClock: {
     seconds: number
@@ -78,7 +80,7 @@ const finishComment = ref('')
 const displayedClock = ref('00:00')
 const displayedShotClock = ref('24')
 let timerId: number | null = null
-
+let serverOffsetMs = 0
 const previewScoreboard = computed<MatchState>(() => {
   return {
     id: match.value?.id,
@@ -87,10 +89,13 @@ const previewScoreboard = computed<MatchState>(() => {
     status: match.value?.status ?? status.value,
     isActive: match.value?.isActive ?? true,
 
-    clock: {
-      time: periodTime.value,
-      isRunning: match.value?.clock?.isRunning ?? false,
-    },
+   clock: {
+  time: match.value?.clock?.time ?? periodTime.value,
+  isRunning:
+    match.value?.clock?.isRunning ?? false,
+  startedAt:
+    match.value?.clock?.startedAt ?? null,
+},
 
     shotClock: {
       seconds: shotClockSeconds.value,
@@ -125,7 +130,7 @@ const previewScoreboard = computed<MatchState>(() => {
     },
   }
 })
-syncFormFromMatch
+
 
 function parseClock(value: string) {
   const [mm, ss] = (value || '00:00').split(':').map(Number)
@@ -146,40 +151,70 @@ function stopTicker() {
   }
 }
 
+function updateDisplayedClock() {
+  const clock = match.value?.clock
+
+  if (!clock) {
+    displayedClock.value = '00:00'
+    return
+  }
+
+  const baseSeconds =
+    parseClock(clock.time ?? '00:00')
+
+  if (
+    !clock.isRunning ||
+    !clock.startedAt
+  ) {
+    displayedClock.value =
+      formatClock(baseSeconds)
+
+    return
+  }
+
+  const startedAtMs =
+    new Date(clock.startedAt).getTime()
+
+  const serverNowMs =
+    Date.now() + serverOffsetMs
+
+  const elapsedSeconds = Math.max(
+    0,
+    Math.floor(
+      (serverNowMs - startedAtMs) / 1000
+    )
+  )
+
+  if (match.value?.sportType === 'basketball') {
+    displayedClock.value =
+      formatClock(
+        Math.max(0, baseSeconds - elapsedSeconds)
+      )
+  } else {
+    displayedClock.value =
+      formatClock(
+        baseSeconds + elapsedSeconds
+      )
+  }
+}
+
 function startTicker() {
   stopTicker()
 
-  let seconds = parseClock(periodTime.value || '00:00')
+  updateDisplayedClock()
 
-  displayedClock.value = formatClock(seconds)
-
-  if (status.value !== 'live') {
+  if (
+    !match.value?.clock?.isRunning ||
+    !match.value?.clock?.startedAt
+  ) {
     return
   }
 
   timerId = window.setInterval(() => {
-    if (sportType.value === 'basketball') {
-      seconds = Math.max(0, seconds - 1)
-    } else {
-      seconds += 1
-    }
-
-    displayedClock.value = formatClock(seconds)
-
-    if (
-      sportType.value === 'basketball' &&
-      seconds === 0
-    ) {
-      stopTicker()
-    }
-  }, 1000)
+    updateDisplayedClock()
+  }, 250)
 }
 
-watch(
-  () => [status.value, sportType.value],
-  () => startTicker(),
-  { immediate: true }
-)
 
 watch(
   () => [periodTime.value, status.value],
@@ -193,6 +228,11 @@ onBeforeUnmount(() => {
 
 
 function syncFormFromMatch(data: MatchState) {
+  if (data.serverNow) {
+  serverOffsetMs =
+    new Date(data.serverNow).getTime() -
+    Date.now()
+}
   sportType.value = data.sportType ?? 'volleyball'
   team1Name.value = data.team1.name
   team2Name.value = data.team2.name
