@@ -73,7 +73,7 @@ async function createScreen() {
   } finally {
     saving.value = false
   }
-}
+
 
 onMounted(loadScreens)
 </script>
