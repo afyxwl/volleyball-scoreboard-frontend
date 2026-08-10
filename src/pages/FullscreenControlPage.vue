@@ -13,6 +13,89 @@ const loading = ref(true)
 const error = ref('')
 const displayedClock = ref('00:00')
 const displayedShotClock = ref('24')
+let gameTimerId: number | null = null
+let shotTimerId: number | null = null
+
+function parseClock(value: string) {
+  const [mm, ss] = (value || '00:00').split(':').map(Number)
+  return (mm || 0) * 60 + (ss || 0)
+}
+
+function formatClock(total: number) {
+  const safe = Math.max(0, total)
+  const mm = String(Math.floor(safe / 60)).padStart(2, '0')
+  const ss = String(safe % 60).padStart(2, '0')
+
+  return `${mm}:${ss}`
+}
+
+function formatShotClock(total: number) {
+  return String(Math.max(0, total)).padStart(2, '0')
+}
+
+function stopGameTicker() {
+  if (gameTimerId !== null) {
+    clearInterval(gameTimerId)
+    gameTimerId = null
+  }
+}
+
+function stopShotTicker() {
+  if (shotTimerId !== null) {
+    clearInterval(shotTimerId)
+    shotTimerId = null
+  }
+}
+function startGameTicker() {
+  stopGameTicker()
+
+  let seconds = parseClock(displayedClock.value)
+
+  if (match.value?.status !== 'live') {
+    return
+  }
+
+  gameTimerId = window.setInterval(() => {
+    if (match.value?.sportType === 'basketball') {
+      seconds = Math.max(0, seconds - 1)
+    } else {
+      seconds += 1
+    }
+
+    displayedClock.value = formatClock(seconds)
+
+    if (
+      match.value?.sportType === 'basketball' &&
+      seconds === 0
+    ) {
+      stopGameTicker()
+    }
+  }, 1000)
+}
+function startShotTicker() {
+  stopShotTicker()
+
+  let seconds = Number(displayedShotClock.value || 24)
+
+  if (
+    match.value?.sportType !== 'basketball' ||
+    match.value?.status !== 'live' ||
+    !match.value?.shotClock?.isRunning
+  ) {
+    return
+  }
+
+  shotTimerId = window.setInterval(() => {
+    seconds = Math.max(0, seconds - 1)
+
+    displayedShotClock.value = formatShotClock(seconds)
+
+    if (seconds === 0) {
+      stopShotTicker()
+    }
+  }, 1000)
+}
+
 
 async function loadCurrentMatch() {
   try {
@@ -21,6 +104,8 @@ async function loadCurrentMatch() {
     match.value = response.data?.data ?? response.data
     displayedClock.value = match.value?.clock?.time ?? '00:00'
     displayedShotClock.value = String(match.value?.shotClock?.seconds ?? 24).padStart(2, '0')
+  startGameTicker()
+  startShotTicker()
   } catch (err) {
     console.error(err)
     error.value = 'Не вдалося завантажити матч'
@@ -29,11 +114,22 @@ async function loadCurrentMatch() {
   }
 }
 
+
 function applyMatch(payload: any) {
   const data = payload?.data ?? payload
+
   match.value = data
-  displayedClock.value = data?.clock?.time ?? displayedClock.value
-  displayedShotClock.value = String(data?.shotClock?.seconds ?? 24).padStart(2, '0')
+
+  displayedClock.value =
+    data?.clock?.time ??
+    displayedClock.value
+
+  displayedShotClock.value = String(
+    data?.shotClock?.seconds ?? 24
+  ).padStart(2, '0')
+
+  startGameTicker()
+  startShotTicker()
 }
 
 async function changeScore(team: 1 | 2, delta: number) {
@@ -119,8 +215,12 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  stopGameTicker()
+  stopShotTicker()
+
   socket.off('match:updated', applyMatch)
   socket.off('match.updated', applyMatch)
+
   socket.disconnect()
 })
 </script>
@@ -165,11 +265,29 @@ onBeforeUnmount(() => {
             <button @click="changeTimeout(1, 1)">+ таймаут</button>
             <button @click="changeTimeout(1, -1)">- таймаут</button>
 
-            <button @click="changeFouls(1, 1)">+ фол</button>
-            <button @click="changeFouls(1, -1)">- фол</button>
+                      <button
+            v-if="match.sportType === 'basketball'"
+            @click="changeFouls(1, 1)"
+          >
+            + фол
+          </button>
+
+          <button
+            v-if="match.sportType === 'basketball'"
+            @click="changeFouls(1, -1)"
+          >
+            - фол
+          </button>
           </div>
 
-          <p>Таймаути: {{ match.team1.timeoutsUsed }} | Фоли: {{ match.team1.fouls }}</p>
+                <p v-if="match.sportType === 'basketball'">
+        Таймаути: {{ match.team1.timeoutsUsed }} |
+        Фоли: {{ match.team1.fouls }}
+      </p>
+
+      <p v-else>
+        Таймаути: {{ match.team1.timeoutsUsed }}
+      </p>
         </article>
 
         <article class="team-panel team-two">
@@ -186,11 +304,29 @@ onBeforeUnmount(() => {
             <button @click="changeTimeout(2, 1)">+ таймаут</button>
             <button @click="changeTimeout(2, -1)">- таймаут</button>
 
-            <button @click="changeFouls(2, 1)">+ фол</button>
-            <button @click="changeFouls(2, -1)">- фол</button>
+                      <button
+            v-if="match.sportType === 'basketball'"
+            @click="changeFouls(2, 1)"
+          >
+            + фол
+          </button>
+
+          <button
+            v-if="match.sportType === 'basketball'"
+            @click="changeFouls(2, -1)"
+          >
+            - фол
+          </button>
           </div>
 
-          <p>Таймаути: {{ match.team2.timeoutsUsed }} | Фоли: {{ match.team2.fouls }}</p>
+                <p v-if="match.sportType === 'basketball'">
+        Таймаути: {{ match.team2.timeoutsUsed }} |
+        Фоли: {{ match.team2.fouls }}
+      </p>
+
+      <p v-else>
+        Таймаути: {{ match.team2.timeoutsUsed }}
+      </p>
         </article>
       </section>
 
@@ -375,19 +511,109 @@ h1 {
   color: #fb7185;
 }
 
-@media (max-width: 900px) {
+@media (max-height: 600px) and (orientation: landscape) {
+  .full-control {
+    width: 100vw;
+    height: 100dvh;
+    padding: 6px 10px;
+    overflow: hidden;
+  }
+
   .topbar {
-    grid-template-columns: 1fr;
-    height: auto;
+    height: 54px;
+    grid-template-columns: 120px 1fr 130px;
+    gap: 8px;
+  }
+
+  .topbar a {
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+
+  h1 {
+    display: none;
+  }
+
+  .topbar p {
+    margin: 0;
+    font-size: 18px;
+    color: #f8fafc;
+  }
+
+  .timer-box strong {
+    font-size: 26px;
+  }
+
+  .timer-box span {
+    font-size: 12px;
+  }
+
+  .period-controls {
+    height: 50px;
+    margin-bottom: 6px;
+    gap: 6px;
+  }
+
+  .period-controls button {
+    min-height: 0;
+    font-size: 16px;
+    border-radius: 12px;
   }
 
   .teams-grid {
-    grid-template-columns: 1fr;
-    height: auto;
+    height: calc(100dvh - 122px);
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 
-  .full-control {
-    overflow: auto;
+  .team-panel {
+    padding: 7px 10px;
+    border-radius: 16px;
+  }
+
+  .team-panel h2 {
+    font-size: clamp(16px, 4vw, 25px);
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .big-score {
+    font-size: clamp(48px, 12vh, 82px);
+    line-height: 0.85;
+    margin: 3px 0 5px;
+  }
+
+  .button-grid {
+    gap: 5px;
+  }
+
+  .button-grid button {
+    min-height: 0;
+    font-size: 14px;
+    border-radius: 10px;
+    padding: 4px;
+  }
+
+  .team-panel p {
+    margin-top: 4px;
+    font-size: 13px;
+  }
+
+  .shot-controls {
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    gap: 5px;
+  }
+
+  .shot-controls button {
+    min-width: 75px;
+    min-height: 28px;
+    padding: 3px 6px;
+    font-size: 12px;
   }
 }
 </style>

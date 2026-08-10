@@ -77,7 +77,8 @@ const router = createRouter({
     path: '/screens/:id/control/full',
     name: 'screen-control-full',
     component: FullscreenControlPage,
-    }
+    meta: { requiresAuth: true },
+  }
   ],
 })
 

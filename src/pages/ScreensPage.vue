@@ -56,7 +56,21 @@ async function createScreen() {
     await loadScreens()
   } catch (err: any) {
     console.error(err)
-    formError.value = err?.response?.data?.message || 'Не вдалося створити екран'
+    } catch (err: any) {
+  console.error(err)
+
+  const status = err?.response?.status
+
+  if (status === 409) {
+    formError.value = 'Такий slug уже використовується'
+  } else if (status === 400) {
+    formError.value =
+      err?.response?.data?.message ||
+      'Перевірте введені дані'
+  } else {
+    formError.value = 'Не вдалося створити екран'
+  }
+
   } finally {
     saving.value = false
   }
@@ -138,7 +152,7 @@ onMounted(loadScreens)
 }
 .layout {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  minmax(0, 1fr)
   gap: 20px;
 }
 .card {
@@ -191,4 +205,85 @@ button {
 .empty-text {
   opacity: 0.8;
 }
+
+/*
+sfks
+*/
+
+
+.page {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.layout {
+  min-width: 0;
+}
+
+.card {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.screen-item {
+  min-width: 0;
+}
+
+.screen-item > div {
+  min-width: 0;
+}
+
+.screen-item strong,
+.screen-item div {
+  overflow-wrap: anywhere;
+}
+ @media (max-width: 700px) {
+  .page {
+    padding: 14px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .header h1 {
+    font-size: 32px;
+    margin: 8px 0;
+  }
+
+  .header a {
+    align-self: flex-start;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .card {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .screen-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .screen-item a {
+    text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  input {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+}
+ 
 </style>

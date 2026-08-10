@@ -36,31 +36,41 @@ async function loadData() {
 
 async function deleteUser(id: number) {
   if (!confirm('Видалити цього адміністратора?')) return
-
+error.value = ''
+success.value = ''
   try {
     await api.delete(`/users/${id}`)
     success.value = 'Користувача видалено'
     await loadData()
-  } catch (err) {
-    console.error(err)
-    error.value = 'Не вдалося видалити користувача'
-  }
+  }catch (err: any) {
+  console.error(err)
+
+  error.value =
+    err?.response?.data?.message ||
+    'Не вдалося видалити користувача'
+}
 }
 
 async function deleteScreen(id: number) {
   if (!confirm('Видалити цей екран?')) return
-
+error.value = ''
+success.value = ''
   try {
     await api.delete(`/screens/${id}`)
     success.value = 'Екран видалено'
     await loadData()
-  } catch (err) {
-    console.error(err)
-    error.value = 'Не вдалося видалити екран'
-  }
+  } catch (err: any) {
+  console.error(err)
+
+  error.value =
+    err?.response?.data?.message ||
+    'Не вдалося видалити екран'
+}
 }
 
 async function assignScreen(screenId: number) {
+  error.value = ''
+  success.value = ''
   try {
     await api.patch(`/screens/${screenId}/assign`, {
       userId: selectedUsers.value[screenId],
@@ -68,10 +78,13 @@ async function assignScreen(screenId: number) {
 
     success.value = 'Екран привʼязано до адміністратора'
     await loadData()
-  } catch (err) {
-    console.error(err)
-    error.value = 'Не вдалося привʼязати екран'
-  }
+  }catch (err: any) {
+  console.error(err)
+
+  error.value =
+    err?.response?.data?.message ||
+    'Не вдалося привʼязати екран'
+}
 }
 
 onMounted(loadData)

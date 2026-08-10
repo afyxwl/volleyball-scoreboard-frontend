@@ -547,102 +547,167 @@ onMounted(loadCurrentMatch)
 
         <p v-if="formError" class="error-text">{{ formError }}</p>
         <p v-if="createErrorDetails" class="details-text">{{ createErrorDetails }}</p>
-      </section>
+  <section v-if="match" class="card">
+  <h2>Керування матчем</h2>
 
-      <section v-if="match" class="card">
-        <h2>Керування матчем</h2>
+  <!-- Загальне керування періодом / сетом -->
+  <div class="row controls-row">
+    <button @click="startPeriod">Почати період</button>
+    <button @click="pausePeriod">Пауза</button>
+    <button @click="endPeriod">Завершити період</button>
+    <button class="danger" @click="resetMatch">Скинути матч</button>
+  </div>
 
-        <div class="row controls-row">
-          <button @click="startPeriod">Почати період</button>
-          <button @click="pausePeriod">Пауза</button>
-          <button @click="endPeriod">Завершити період</button>
-          <button class="danger" @click="resetMatch">Скинути матч</button>
+  <!-- Таймер атаки є тільки в баскетболі -->
+  <div
+    v-if="match.sportType === 'basketball'"
+    class="foul-box"
+  >
+    <strong>Таймер атаки: {{ displayedShotClock }}</strong>
+
+    <div class="row">
+      <button @click="updateShotClock(24, true)">
+        24 сек
+      </button>
+
+      <button @click="updateShotClock(14, true)">
+        14 сек
+      </button>
+
+      <button @click="updateShotClock(shotClockSeconds, true)">
+        Старт атаки
+      </button>
+
+      <button @click="updateShotClock(shotClockSeconds, false)">
+        Пауза атаки
+      </button>
+    </div>
+  </div>
+
+  <div class="teams">
+
+   
+    <div class="team-box">
+      <h3>{{ match.team1.name }}</h3>
+
+      <p class="score">
+        {{ match.team1.score }}
+      </p>
+
+      <!-- +1 / -1 є в обох видах спорту -->
+      <div class="row">
+        <button @click="changeScore(1, 1)">
+          +1 очко
+        </button>
+
+        <button @click="changeScore(1, -1)">
+          -1 очко
+        </button>
+      </div>
+
+      <!-- +2 та +3 тільки для баскетболу -->
+      <button
+        v-if="match.sportType === 'basketball'"
+        @click="changeScore(1, 2)"
+      >
+        +2 очки
+      </button>
+
+      <button
+        v-if="match.sportType === 'basketball'"
+        @click="changeScore(1, 3)"
+      >
+        +3 очки
+      </button>
+
+      <!-- Таймаут є і у волейболі, і у баскетболі -->
+      <button @click="takeTimeout(1)">
+        Таймаут команді 1
+      </button>
+
+      <!-- Фоли ТІЛЬКИ для баскетболу -->
+      <div
+        v-if="match.sportType === 'basketball'"
+        class="foul-box"
+      >
+        <strong>
+          Фоли: {{ match.team1.fouls ?? 0 }}
+        </strong>
+
+        <div class="row">
+          <button @click="changeFouls(1, 1)">
+            +1 фол
+          </button>
+
+          <button @click="changeFouls(1, -1)">
+            -1 фол
+          </button>
         </div>
+      </div>
+    </div>
 
-        <div
-          v-if="match?.sportType === 'basketball'"
-          class="foul-box"
-        >
-          <strong>Таймер атаки: {{ displayedShotClock }}</strong>
+    <!-- КОМАНДА 2 -->
+    <div class="team-box">
+      <h3>{{ match.team2.name }}</h3>
 
-          <div class="row">
-            <button @click="updateShotClock(24, true)">24 сек</button>
-            <button @click="updateShotClock(14, true)">14 сек</button>
-            <button @click="updateShotClock(shotClockSeconds, true)">Старт атаки</button>
-            <button @click="updateShotClock(shotClockSeconds, false)">Пауза атаки</button>
-          </div>
+      <p class="score">
+        {{ match.team2.score }}
+      </p>
+
+      <!-- +1 / -1 є в обох видах спорту -->
+      <div class="row">
+        <button @click="changeScore(2, 1)">
+          +1 очко
+        </button>
+
+        <button @click="changeScore(2, -1)">
+          -1 очко
+        </button>
+      </div>
+
+      <!-- +2 та +3 тільки для баскетболу -->
+      <button
+        v-if="match.sportType === 'basketball'"
+        @click="changeScore(2, 2)"
+      >
+        +2 очки
+      </button>
+
+      <button
+        v-if="match.sportType === 'basketball'"
+        @click="changeScore(2, 3)"
+      >
+        +3 очки
+      </button>
+
+      <!-- Таймаут є і у волейболі, і у баскетболі -->
+      <button @click="takeTimeout(2)">
+        Таймаут команді 2
+      </button>
+
+      <!-- Фоли ТІЛЬКИ для баскетболу -->
+      <div
+        v-if="match.sportType === 'basketball'"
+        class="foul-box"
+      >
+        <strong>
+          Фоли: {{ match.team2.fouls ?? 0 }}
+        </strong>
+
+        <div class="row">
+          <button @click="changeFouls(2, 1)">
+            +1 фол
+          </button>
+
+          <button @click="changeFouls(2, -1)">
+            -1 фол
+          </button>
         </div>
+      </div>
+    </div>
 
-        <div class="teams">
-          <div class="team-box">
-            <h3>{{ match.team1.name }}</h3>
-            <p class="score">{{ match.team1.score }}</p>
-
-            <div class="row">
-              <button @click="changeScore(1, 1)">+1 очко</button>
-              <button @click="changeScore(1, -1)">-1 очко</button>
-            </div>
-
-            <button
-              v-if="match?.sportType === 'basketball'"
-              @click="changeScore(1, 2)"
-            >
-              +2 очки
-            </button>
-
-            <button
-              v-if="match?.sportType === 'basketball'"
-              @click="changeScore(1, 3)"
-            >
-              +3 очки
-            </button>
-
-            <button @click="takeTimeout(1)">Таймаут команді 1</button>
-
-            <div class="foul-box">
-              <strong>Фоли: {{ match.team1.fouls ?? 0 }}</strong>
-              <div class="row">
-                <button @click="changeFouls(1, 1)">+1 фол</button>
-                <button @click="changeFouls(1, -1)">-1 фол</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="team-box">
-            <h3>{{ match.team2.name }}</h3>
-            <p class="score">{{ match.team2.score }}</p>
-
-            <div class="row">
-              <button @click="changeScore(2, 1)">+1 очко</button>
-              <button @click="changeScore(2, -1)">-1 очко</button>
-            </div>
-
-            <button
-              v-if="match?.sportType === 'basketball'"
-              @click="changeScore(2, 2)"
-            >
-              +2 очки
-            </button>
-
-            <button
-              v-if="match?.sportType === 'basketball'"
-              @click="changeScore(2, 3)"
-            >
-              +3 очки
-            </button>
-
-            <button @click="takeTimeout(2)">Таймаут команді 2</button>
-
-            <div class="foul-box">
-              <strong>Фоли: {{ match.team2.fouls ?? 0 }}</strong>
-              <div class="row">
-                <button @click="changeFouls(2, 1)">+1 фол</button>
-                <button @click="changeFouls(2, -1)">-1 фол</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+  </div>
+</section>
 
       <section class="card">
         <h2>Попередній перегляд</h2>
