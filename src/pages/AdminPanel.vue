@@ -19,12 +19,17 @@ async function loadData() {
       api.get('/users'),
       api.get('/screens'),
     ])
+   console.log('USERS RESPONSE:', usersRes.data)
+   console.log('SCREENS RESPONSE:', screensRes.data)
 
     users.value = usersRes.data?.data ?? usersRes.data ?? []
     screens.value = screensRes.data?.data ?? screensRes.data ?? []
 
     screens.value.forEach((screen) => {
-      selectedUsers.value[screen.id] = screen.userId ?? screen.user_id ?? null
+      selectedUsers.value[screen.id] =
+  screen.ownerUserId ??
+  screen.owner_user_id ??
+  null
     })
   } catch (err) {
     console.error(err)
