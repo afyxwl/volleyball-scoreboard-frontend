@@ -14,8 +14,7 @@ const error = ref('')
 const displayedClock = ref('00:00')
 const displayedShotClock = ref('24')
 
-let gameTimerId: number | null = null
-let shotTimerId: number | null = null
+let tickerId: number | null = null
 let serverOffsetMs = 0
 
 function parseClock(value: string) {
@@ -27,17 +26,10 @@ function formatShotClock(total: number) {
   return String(Math.max(0, total)).padStart(2, '0')
 }
 
-function stopGameTicker() {
-  if (gameTimerId !== null) {
-    clearInterval(gameTimerId)
-    gameTimerId = null
-  }
-}
-
-function stopShotTicker() {
-  if (shotTimerId !== null) {
-    clearInterval(shotTimerId)
-    shotTimerId = null
+function stopTicker() {
+  if (tickerId !== null) {
+    clearInterval(tickerId)
+    tickerId = null
   }
 }
 
@@ -98,46 +90,59 @@ function updateDisplayedClock() {
   }
 }
 
-function startGameTicker() {
-  stopGameTicker()
+function updateDisplayedShotClock() {
+  const shotClock = match.value?.shotClock
 
-  updateDisplayedClock()
-
-  if (
-    !match.value?.clock?.isRunning ||
-    !match.value?.clock?.startedAt
-  ) {
+  if (!shotClock) {
+    displayedShotClock.value = '24'
     return
   }
 
-  gameTimerId = window.setInterval(
-    updateDisplayedClock,
-    250
-  )
-}
-
-function startShotTicker() {
-  stopShotTicker()
-
-  let seconds = Number(displayedShotClock.value || 24)
+  const base = Number(shotClock.seconds ?? 24)
 
   if (
     match.value?.sportType !== 'basketball' ||
-    match.value?.status !== 'live' ||
-    !match.value?.shotClock?.isRunning
+    !shotClock.isRunning ||
+    !shotClock.startedAt
   ) {
+    displayedShotClock.value = formatShotClock(base)
     return
   }
 
-  shotTimerId = window.setInterval(() => {
-    seconds = Math.max(0, seconds - 1)
+  const now = Date.now() + serverOffsetMs
+  const started = new Date(shotClock.startedAt).getTime()
+  const elapsed = Math.max(
+    0,
+    Math.floor((now - started) / 1000)
+  )
 
-    displayedShotClock.value = formatShotClock(seconds)
+  displayedShotClock.value = formatShotClock(
+    Math.max(0, base - elapsed)
+  )
+}
 
-    if (seconds === 0) {
-      stopShotTicker()
-    }
-  }, 1000)
+function startTicker() {
+  stopTicker()
+
+  const update = () => {
+    updateDisplayedClock()
+    updateDisplayedShotClock()
+  }
+
+  update()
+
+  const gameRunning =
+    match.value?.clock?.isRunning &&
+    match.value?.clock?.startedAt
+
+  const shotRunning =
+    match.value?.sportType === 'basketball' &&
+    match.value?.shotClock?.isRunning &&
+    match.value?.shotClock?.startedAt
+
+  if (gameRunning || shotRunning) {
+    tickerId = window.setInterval(update, 100)
+  }
 }
 
 
@@ -172,12 +177,7 @@ function applyMatch(payload: any) {
       Date.now()
   }
 
-  displayedShotClock.value = String(
-    data?.shotClock?.seconds ?? 24
-  ).padStart(2, '0')
-
-  startGameTicker()
-  startShotTicker()
+  startTicker()
 }
 async function changeScore(team: 1 | 2, delta: number) {
   if (!match.value?.id) return
@@ -185,7 +185,6 @@ async function changeScore(team: 1 | 2, delta: number) {
   const response = await api.patch(`/matches/${match.value.id}/score`, {
     team,
     delta,
-    periodTime: displayedClock.value,
   })
 
   applyMatch(response.data)
@@ -274,8 +273,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  stopGameTicker()
-  stopShotTicker()
+  stopTicker()
 
   socket.off('match:updated', applyMatch)
   socket.off('match.updated', applyMatch)
@@ -321,32 +319,31 @@ onBeforeUnmount(() => {
             <button v-if="match.sportType === 'basketball'" @click="changeScore(1, 2)">+2</button>
             <button v-if="match.sportType === 'basketball'" @click="changeScore(1, 3)">+3</button>
 
-            <button @click="changeTimeout(1, 1)">+ таймаут</button>
-            <button @click="changeTimeout(1, -1)">- таймаут</button>
-
-                      <button
-            v-if="match.sportType === 'basketball'"
-            @click="changeFouls(1, 1)"
-          >
-            + фол
-          </button>
-
-          <button
-            v-if="match.sportType === 'basketball'"
-            @click="changeFouls(1, -1)"
-          >
-            - фол
-          </button>
+            <button v-if="match.sportType !== 'basketball'" @click="changeTimeout(1, 1)">+ таймаут</button>
+            <button v-if="match.sportType !== 'basketball'" @click="changeTimeout(1, -1)">- таймаут</button>
           </div>
 
-                <p v-if="match.sportType === 'basketball'">
-        Таймаути: {{ match.team1.timeoutsUsed }} |
-        Фоли: {{ match.team1.fouls }}
-      </p>
+          <div v-if="match.sportType === 'basketball'" class="basketball-stats">
+            <div class="basketball-stat">
+              <span>Таймаути: {{ match.team1.timeoutsUsed }}</span>
+              <div class="stat-buttons">
+                <button @click="changeTimeout(1, 1)">+</button>
+                <button @click="changeTimeout(1, -1)">−</button>
+              </div>
+            </div>
 
-      <p v-else>
-        Таймаути: {{ match.team1.timeoutsUsed }}
-      </p>
+            <div class="basketball-stat">
+              <span>Фоли: {{ match.team1.fouls }}</span>
+              <div class="stat-buttons">
+                <button @click="changeFouls(1, 1)">+</button>
+                <button @click="changeFouls(1, -1)">−</button>
+              </div>
+            </div>
+          </div>
+
+          <p v-else>
+            Таймаути: {{ match.team1.timeoutsUsed }}
+          </p>
         </article>
 
         <article class="team-panel team-two">
@@ -360,38 +357,38 @@ onBeforeUnmount(() => {
             <button v-if="match.sportType === 'basketball'" @click="changeScore(2, 2)">+2</button>
             <button v-if="match.sportType === 'basketball'" @click="changeScore(2, 3)">+3</button>
 
-            <button @click="changeTimeout(2, 1)">+ таймаут</button>
-            <button @click="changeTimeout(2, -1)">- таймаут</button>
-
-                      <button
-            v-if="match.sportType === 'basketball'"
-            @click="changeFouls(2, 1)"
-          >
-            + фол
-          </button>
-
-          <button
-            v-if="match.sportType === 'basketball'"
-            @click="changeFouls(2, -1)"
-          >
-            - фол
-          </button>
+            <button v-if="match.sportType !== 'basketball'" @click="changeTimeout(2, 1)">+ таймаут</button>
+            <button v-if="match.sportType !== 'basketball'" @click="changeTimeout(2, -1)">- таймаут</button>
           </div>
 
-                <p v-if="match.sportType === 'basketball'">
-        Таймаути: {{ match.team2.timeoutsUsed }} |
-        Фоли: {{ match.team2.fouls }}
-      </p>
+          <div v-if="match.sportType === 'basketball'" class="basketball-stats">
+            <div class="basketball-stat">
+              <span>Таймаути: {{ match.team2.timeoutsUsed }}</span>
+              <div class="stat-buttons">
+                <button @click="changeTimeout(2, 1)">+</button>
+                <button @click="changeTimeout(2, -1)">−</button>
+              </div>
+            </div>
 
-      <p v-else>
-        Таймаути: {{ match.team2.timeoutsUsed }}
-      </p>
+            <div class="basketball-stat">
+              <span>Фоли: {{ match.team2.fouls }}</span>
+              <div class="stat-buttons">
+                <button @click="changeFouls(2, 1)">+</button>
+                <button @click="changeFouls(2, -1)">−</button>
+              </div>
+            </div>
+          </div>
+
+          <p v-else>
+            Таймаути: {{ match.team2.timeoutsUsed }}
+          </p>
         </article>
       </section>
 
       <section v-if="match.sportType === 'basketball'" class="shot-controls">
         <button @click="updateShotClock(24, true)">24 сек</button>
         <button @click="updateShotClock(14, true)">14 сек</button>
+        <button @click="updateShotClock(Number(displayedShotClock), true)">Старт атаки</button>
         <button @click="updateShotClock(Number(displayedShotClock), false)">Пауза атаки</button>
       </section>
     </template>
@@ -544,6 +541,40 @@ h1 {
   font-weight: 900;
 }
 
+.basketball-stats {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.basketball-stat {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.basketball-stat > span {
+  font-size: clamp(11px, 1.4vw, 16px);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.stat-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.stat-buttons button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
 .shot-controls {
   position: fixed;
   left: 50%;
@@ -621,7 +652,7 @@ h1 {
   }
 
   .teams-grid {
-    height: calc(100dvh - 122px);
+    height: calc(100dvh - 158px);
     grid-template-columns: 1fr 1fr;
     gap: 8px;
   }
@@ -661,6 +692,30 @@ h1 {
     font-size: 13px;
   }
 
+  .basketball-stats {
+    gap: 5px;
+    margin-top: 4px;
+  }
+
+  .basketball-stat {
+    gap: 2px;
+  }
+
+  .basketball-stat > span {
+    font-size: 12px;
+  }
+
+  .stat-buttons {
+    gap: 4px;
+  }
+
+  .stat-buttons button {
+    min-height: 24px;
+    padding: 2px 6px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+
   .shot-controls {
     position: absolute;
     bottom: 3px;
@@ -669,7 +724,7 @@ h1 {
   }
 
   .shot-controls button {
-    min-width: 75px;
+    min-width: 68px;
     min-height: 28px;
     padding: 3px 6px;
     font-size: 12px;
