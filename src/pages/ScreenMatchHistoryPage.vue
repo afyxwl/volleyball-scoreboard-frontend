@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onActivated, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import api from '../services/api'
 
@@ -137,6 +137,7 @@ async function loadHistory() {
 }
 
 onMounted(loadHistory)
+onActivated(loadHistory)
 </script>
 
 <template>
