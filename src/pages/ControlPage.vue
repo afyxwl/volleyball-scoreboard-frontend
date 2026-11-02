@@ -457,14 +457,17 @@ async function startPeriod() {
   }
 }
 
-async function endPeriod() {
+async function finishPeriod() {
   if (!match.value?.id) return
 
   try {
-    const response = await api.post(`/matches/${match.value.id}/end-period`, {
-      periodTime: displayedClock.value,
-      comment: finishComment.value,
-    })
+    const response = await api.post(
+      `/matches/${match.value.id}/end-period`,
+      {
+        periodTime: displayedClock.value,
+        comment: finishComment.value,
+      }
+    )
 
     const payload = response.data?.data ?? response.data
     applyMatch(payload)
@@ -616,7 +619,7 @@ onMounted(loadCurrentMatch)
   <div class="row controls-row">
     <button @click="startPeriod">Почати період</button>
     <button @click="pausePeriod">Пауза</button>
-    <button @click="endPeriod">Завершити період</button>
+    <button @click="finishPeriod">Завершити період</button>
     <button class="danger" @click="resetMatch">Скинути матч</button>
   </div>
 
