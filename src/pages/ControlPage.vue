@@ -480,15 +480,31 @@ async function finishPeriod() {
 
 async function resetMatch() {
   if (!match.value?.id) return
-  if (!window.confirm('Справді скинути матч?')) return
+
+  const confirmed = window.confirm(
+    'Завершити поточний матч, зберегти його в історії та створити новий?'
+  )
+
+  if (!confirmed) return
 
   try {
-    const response = await api.post(`/matches/${match.value.id}/reset`)
+    formError.value = ''
+
+    const response = await api.post(
+      `/matches/${match.value.id}/reset`
+    )
+
     const payload = response.data?.data ?? response.data
+
+    // Backend повертає новий матч із новим ID.
     applyMatch(payload)
+
+    finishComment.value = ''
+
   } catch (err) {
     console.error(err)
-    formError.value = 'Не вдалося скинути матч'
+    formError.value =
+      'Не вдалося зберегти матч в історії та створити новий'
   }
 }
 onMounted(loadCurrentMatch)
@@ -619,7 +635,7 @@ onMounted(loadCurrentMatch)
   <div class="row controls-row">
     <button @click="startPeriod">Почати період</button>
     <button @click="pausePeriod">Пауза</button>
-    <button @click="finishPeriod">Завершити період</button>
+    <button @click="finishPeriod">Завершити період</button> 
     <button class="danger" @click="resetMatch">Скинути матч</button>
   </div>
 
